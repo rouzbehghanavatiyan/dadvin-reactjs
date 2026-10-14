@@ -10,12 +10,15 @@ function permitFor(values) {
 }
 
 export function createRegisterPayload(values) {
+  const nationalCode = normalizeDigits(values.nationalCode || "").trim();
+  if (!/^\d{10}$/.test(nationalCode))
+    throw new Error("کد ملی ۱۰ رقمی را وارد کنید.");
   return {
     registrationPermit: permitFor(values),
     name: values.name?.trim() || null,
     lastName: values.lastName?.trim() || null,
     email: values.email?.trim() || null,
-    nationalCode: normalizeDigits(values.nationalCode || "").trim() || null,
+    nationalCode,
     phoneNumber: normalizeDigits(values.phoneNumber || "").trim(),
   };
 }

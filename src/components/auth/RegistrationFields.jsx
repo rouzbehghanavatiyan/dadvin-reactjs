@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import Input from "../../UI/Input";
 import RoleSelector from "./RoleSelector";
-import { mobileRules } from "../../utils/validation";
+import { mobileRules, nationalCodeRules } from "../../utils/validation";
 import { normalizeDigits } from "../../utils/StringHelper";
 
 export default function RegistrationFields({ register, errors, role }) {
@@ -62,15 +62,12 @@ export default function RegistrationFields({ register, errors, role }) {
         error={errors.email?.message}
       />
       <Input
-        label="کد ملی (اختیاری)"
+        label="کد ملی"
         icon={Fingerprint}
         inputMode="numeric"
         dir="ltr"
-        {...register("nationalCode", {
-          setValueAs: (value) => normalizeDigits(value).trim(),
-          validate: (value) =>
-            !value || /^\d{10}$/.test(value) || "کد ملی باید ۱۰ رقم باشد.",
-        })}
+        required
+        {...register("nationalCode", nationalCodeRules)}
         error={errors.nationalCode?.message}
       />
       {role === "lawyer" && (

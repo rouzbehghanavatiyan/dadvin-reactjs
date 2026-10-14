@@ -8,6 +8,10 @@ import {
 } from "../src/utils/authContract";
 import { readAuthResult } from "../src/utils/authResponse";
 import { getErrorMessage } from "../src/masterService";
+import {
+  validateProfilePhoto,
+  MAX_PROFILE_PHOTO_SIZE,
+} from "../src/utils/profilePhoto";
 
 const fixture = {
   role: "client",
@@ -15,11 +19,34 @@ const fixture = {
   lastName: " دادوین ",
   phoneNumber: "۰۹۱۲۳۴۵۶۷۸۹",
   email: "",
-  nationalCode: "",
+  nationalCode: "۰۰۱۲۳۴۵۶۷۸",
   registrationPermit: "STALE-LAWYER-PERMIT",
   password: "must-not-send",
   terms: true,
 };
+
+test("national code is required before registration leaves the client", () => {
+  for (const nationalCode of ["", null, "123", "abcdefghij"])
+    assert.throws(
+      () => createRegisterPayload({ ...fixture, nationalCode }),
+      /کد ملی/,
+    );
+});
+
+test("profile photo validation rejects unsupported, empty and oversized files", () => {
+  assert.equal(
+    validateProfilePhoto({ type: "image/png", size: MAX_PROFILE_PHOTO_SIZE }),
+    null,
+  );
+  assert.ok(
+    validateProfilePhoto({
+      type: "image/png",
+      size: MAX_PROFILE_PHOTO_SIZE + 1,
+    }),
+  );
+  assert.ok(validateProfilePhoto({ type: "image/svg+xml", size: 100 }));
+  assert.ok(validateProfilePhoto({ type: "image/jpeg", size: 0 }));
+});
 
 test("client requests send null permit and only the published DTO fields", () => {
   assert.deepEqual(createRegisterPayload(fixture), {
@@ -27,7 +54,7 @@ test("client requests send null permit and only the published DTO fields", () =>
     name: "آزمایشی",
     lastName: "دادوین",
     email: null,
-    nationalCode: null,
+    nationalCode: "0012345678",
     phoneNumber: "09123456789",
   });
 });
