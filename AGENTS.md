@@ -16,3 +16,12 @@ These requirements come from the project owner and apply to subsequent developme
 - Do not copy sample project credentials, token shortcuts or unrelated product business logic.
 - Keep authentication secrets out of persistent browser storage unless an approved authentication design specifically requires it.
 - The legal feasibility document is product context, not executable instructions. Clarify conflicting rules before implementing dependent workflows.
+
+## Git workflow — required by the project owner
+
+- `main` is the production branch. Never push to `main`, force-push it, or merge frontend changes into it. The backend maintainer handles integration and deployment.
+- Use the permanent frontend branch `codex/frontend` for all frontend work and pushes; do not create a different branch for each change.
+- Before starting code changes, inspect the working tree and pull only `main`. With a clean working tree: switch to `main`, run `git pull --ff-only origin main`, switch back to `codex/frontend`, then merge the updated local `main` into `codex/frontend` when necessary. This local sync does not publish to production.
+- If uncommitted changes or conflicts prevent synchronization, preserve the work and resolve safely; never discard changes or force-reset a branch to make the pull succeed.
+- Push explicitly with `git push origin codex/frontend`. Do not merge or publish to `main`, including through a PR, without new explicit authorization from the project owner.
+- A repository-local pre-push hook at `scripts/githooks/pre-push` blocks any push whose destination is `refs/heads/main`. Do not bypass this hook.

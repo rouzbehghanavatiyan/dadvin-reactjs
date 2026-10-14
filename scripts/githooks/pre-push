@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Protect the production branch on this frontend checkout.
+while read -r local_ref local_sha remote_ref remote_sha
+do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    printf '%s\n' 'Push blocked: main is managed by the backend maintainer. Push codex/frontend instead.' >&2
+    exit 1
+  fi
+done
+exit 0
