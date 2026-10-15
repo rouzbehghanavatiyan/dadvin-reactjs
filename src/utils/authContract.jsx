@@ -25,8 +25,26 @@ export function createRegisterPayload(values) {
 
 export function createVerifyPayload(values) {
   return {
-    phoneNumber: normalizeDigits(values.phoneNumber || "").trim(),
+    mobile: normalizeDigits(values.phoneNumber || "").trim(),
     code: normalizeDigits(values.code || "").trim(),
+    firstName: values.name?.trim() || null,
+    lastName: values.lastName?.trim() || null,
+    email: values.email?.trim() || null,
+    nationalCode: normalizeDigits(values.nationalCode || "").trim() || null,
     registrationPermit: permitFor(values),
   };
+}
+
+export function createLoginPayload(values) {
+  const mobile = normalizeDigits(values.mobile || "").trim();
+  if (!/^09\d{9}$/.test(mobile))
+    throw new Error("شماره موبایل ۱۱ رقمی با ۰۹ وارد کنید.");
+  return { mobile };
+}
+
+export function createLoginVerifyPayload(values) {
+  const { mobile } = createLoginPayload(values);
+  const code = normalizeDigits(values.code || "").trim();
+  if (!/^\d+$/.test(code)) throw new Error("کد تأیید را با ارقام وارد کنید.");
+  return { mobile, code };
 }

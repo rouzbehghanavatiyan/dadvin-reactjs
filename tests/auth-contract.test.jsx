@@ -1,13 +1,24 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import http from "../src/utils/axios";
-import { registerAccount, verifyRegistrationCode } from "../src/services";
+import {
+  registerAccount,
+  verifyRegistrationCode,
+  login,
+  verifyLoginCode,
+} from "../src/services";
 import {
   createRegisterPayload,
   createVerifyPayload,
+  createLoginPayload,
+  createLoginVerifyPayload,
 } from "../src/utils/authContract";
 import { readAuthResult } from "../src/utils/authResponse";
 import { getErrorMessage } from "../src/masterService";
+import mainReducer, {
+  setOtpSession,
+  clearOtpSession,
+} from "../src/hooks/slices/mainReducer";
 import {
   validateProfilePhoto,
   MAX_PROFILE_PHOTO_SIZE,
@@ -24,6 +35,32 @@ const fixture = {
   password: "must-not-send",
   terms: true,
 };
+
+test("login rejects email and normalizes mobile without extra form fields", () => {
+  assert.deepEqual(
+    createLoginPayload({ mobile: " ۰۹۱۲۳۴۵۶۷۸۹ ", password: "not-used" }),
+    { mobile: "09123456789" },
+  );
+  for (const mobile of ["", null, "name@example.com", "123"])
+    assert.throws(() => createLoginPayload({ mobile }), /موبایل/);
+  assert.deepEqual(
+    createLoginVerifyPayload({ mobile: "۰۹۱۲۳۴۵۶۷۸۹", code: " ۰۰۱۲ " }),
+    { mobile: "09123456789", code: "0012" },
+  );
+  assert.throws(
+    () => createLoginVerifyPayload({ mobile: "09123456789", code: "abc" }),
+    /کد/,
+  );
+});
+
+test("OTP session starts empty and local logout clears the verified identity", () => {
+  let state = mainReducer(undefined, { type: "init" });
+  assert.equal(state.verifiedMobile, null);
+  state = mainReducer(state, setOtpSession("09123456789"));
+  assert.equal(state.verifiedMobile, "09123456789");
+  state = mainReducer(state, clearOtpSession());
+  assert.equal(state.verifiedMobile, null);
+});
 
 test("national code is required before registration leaves the client", () => {
   for (const nationalCode of ["", null, "123", "abcdefghij"])
@@ -66,15 +103,23 @@ test("lawyer permit survives unchanged in registration and OTP verification", ()
   };
   assert.equal(createRegisterPayload(lawyer).registrationPermit, "TEST-123");
   assert.deepEqual(createVerifyPayload({ ...lawyer, code: " ۰۰۱۲ " }), {
-    phoneNumber: "09123456789",
+    mobile: "09123456789",
     code: "0012",
+    firstName: "آزمایشی",
+    lastName: "دادوین",
+    email: null,
+    nationalCode: "0012345678",
     registrationPermit: "TEST-123",
   });
 });
 test("client OTP always sends null even if old lawyer data remains in the form", () => {
   assert.deepEqual(createVerifyPayload({ ...fixture, code: "٠١٢٣" }), {
-    phoneNumber: "09123456789",
+    mobile: "09123456789",
     code: "0123",
+    firstName: "آزمایشی",
+    lastName: "دادوین",
+    email: null,
+    nationalCode: "0012345678",
     registrationPermit: null,
   });
 });
@@ -142,19 +187,37 @@ test("both services use the global Axios instance and the exact Swagger paths", 
   try {
     await registerAccount(fixture);
     await verifyRegistrationCode({ ...fixture, code: "1234" });
+    await login({
+      mobile: fixture.phoneNumber,
+      password: "must-not-send",
+      rememberMe: true,
+    });
+    await verifyLoginCode({
+      mobile: fixture.phoneNumber,
+      code: "٠٠١٢",
+      registrationPermit: "do-not-guess-role",
+    });
     assert.deepEqual(
       requests.map(({ url, method }) => ({ url, method })),
       [
         { url: "/api/Users/register", method: "post" },
+        { url: "/api/Users/verifyLoginCode", method: "post" },
+        { url: "/api/Users/login", method: "post" },
         { url: "/api/Users/verifyLoginCode", method: "post" },
       ],
     );
     assert.equal(requests[0].body.registrationPermit, null);
     assert.deepEqual(Object.keys(requests[1].body).sort(), [
       "code",
-      "phoneNumber",
+      "email",
+      "firstName",
+      "lastName",
+      "mobile",
+      "nationalCode",
       "registrationPermit",
     ]);
+    assert.deepEqual(requests[2].body, { mobile: "09123456789" });
+    assert.deepEqual(requests[3].body, { mobile: "09123456789", code: "0012" });
   } finally {
     http.defaults.adapter = previousAdapter;
   }

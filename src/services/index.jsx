@@ -2,14 +2,24 @@ import { postAuth } from "../masterService";
 import {
   createRegisterPayload,
   createVerifyPayload,
+  createLoginPayload,
+  createLoginVerifyPayload,
 } from "../utils/authContract";
 import { readAuthResult } from "../utils/authResponse";
 
-const environment = import.meta.env || {};
-
-// Request fields and response handling must be reconciled with the published Swagger contract.
-export const login = (payload) =>
-  postAuth(environment.VITE_AUTH_LOGIN_PATH, payload);
+// Paths and request field names verified against Swagger on 2026-10-15.
+export const login = async (values, options) =>
+  readAuthResult(
+    await postAuth("/api/Users/login", createLoginPayload(values), options),
+  );
+export const verifyLoginCode = async (values, options) =>
+  readAuthResult(
+    await postAuth(
+      "/api/Users/verifyLoginCode",
+      createLoginVerifyPayload(values),
+      options,
+    ),
+  );
 export const registerAccount = async (values) =>
   readAuthResult(
     await postAuth("/api/Users/register", createRegisterPayload(values)),
@@ -18,5 +28,3 @@ export const verifyRegistrationCode = async (values) =>
   readAuthResult(
     await postAuth("/api/Users/verifyLoginCode", createVerifyPayload(values)),
   );
-export const recoverPassword = (payload) =>
-  postAuth(environment.VITE_AUTH_RECOVERY_PATH, payload);

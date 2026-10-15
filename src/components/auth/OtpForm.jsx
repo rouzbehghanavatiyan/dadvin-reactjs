@@ -11,6 +11,8 @@ export default function OtpForm({
   editDetails,
   busy,
   feedback,
+  submitLabel = "تأیید کد و تکمیل ثبت‌نام",
+  editLabel = "ویرایش مشخصات یا شماره موبایل",
 }) {
   const {
     register,
@@ -47,7 +49,7 @@ export default function OtpForm({
         />
         {feedback && <Alert kind={feedback.kind}>{feedback.message}</Alert>}
         <Btn type="submit" loading={busy} className="w-full">
-          تأیید کد و تکمیل ثبت‌نام
+          {submitLabel}
         </Btn>
       </form>
       <Btn
@@ -57,7 +59,7 @@ export default function OtpForm({
         className="w-full"
       >
         <ArrowRight size={16} />
-        ویرایش مشخصات یا شماره موبایل
+        {editLabel}
       </Btn>
     </section>
   );

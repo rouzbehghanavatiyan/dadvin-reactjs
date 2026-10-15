@@ -1,11 +1,11 @@
 import http from "./utils/axios";
 
-export async function postAuth(path, payload) {
+export async function postAuth(path, payload, options = {}) {
   if (!path)
     throw new Error(
       "سرویس احراز هویت هنوز فعال نشده است. لطفاً پس از راه‌اندازی سرویس دوباره تلاش کنید.",
     );
-  const { data } = await http.post(path, payload);
+  const { data } = await http.post(path, payload, options);
   return data;
 }
 
@@ -27,7 +27,7 @@ export function getErrorMessage(error) {
     if (messages.length) return messages.join(" ");
   }
   if (error.response.status === 401)
-    return "شماره موبایل یا رمز عبور نادرست است.";
+    return "تأیید هویت انجام نشد. شماره موبایل و کد تأیید را بررسی کنید.";
   if (error.response.status === 429)
     return "تعداد درخواست‌ها زیاد است. کمی بعد دوباره تلاش کنید.";
   return "درخواست انجام نشد. لطفاً اطلاعات را بررسی کنید و دوباره تلاش کنید.";
