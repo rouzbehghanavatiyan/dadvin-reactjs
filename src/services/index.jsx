@@ -1,4 +1,4 @@
-import { postAuth } from "../masterService";
+import { postAuth } from "../services/masterService";
 import {
   createRegisterPayload,
   createVerifyPayload,
