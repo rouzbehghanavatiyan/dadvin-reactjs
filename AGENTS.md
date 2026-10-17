@@ -13,6 +13,7 @@ These requirements come from the project owner and apply to subsequent developme
 - National code is required in registration and profile forms. Never label it optional; normalize digits and reject an empty or non-10-digit value before registration requests.
 - Login is phone-only OTP: mobile number → SMS code → panel after server-confirmed verification. Do not add email/password login, password recovery, remember-me, Google or LinkedIn login.
 - Swagger: `http://171.22.25.222:9090/swagger/index.html`. API origin: `http://171.22.25.222:9090/`.
+- Use the API origin directly as the Axios default and example VITE_URL. Do not reintroduce a local `/backend` prefix; coordinate server CORS and HTTPS for the frontend origin.
 - Never invent backend endpoint contracts, credentials or successful authentication. Reconcile request/response adapters with Swagger before enabling live auth.
 - Do not copy sample project credentials, token shortcuts or unrelated product business logic.
 - Keep authentication secrets out of persistent browser storage unless an approved authentication design specifically requires it.

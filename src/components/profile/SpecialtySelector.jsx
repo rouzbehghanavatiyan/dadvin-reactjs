@@ -12,11 +12,16 @@ export const specialties = [
   "اداری",
   "دیوان",
 ];
-export default function SpecialtySelector({ register, error, count }) {
+export default function SpecialtySelector({
+  register,
+  error,
+  count,
+  label = "حوزه‌های تخصصی",
+}) {
   return (
     <fieldset>
       <legend className="mb-3 text-[13px] font-medium text-ink">
-        حوزه‌های تخصصی{" "}
+        {label}{" "}
         <span className="mr-2 text-xs font-normal text-muted">
           {count} از ۳
         </span>

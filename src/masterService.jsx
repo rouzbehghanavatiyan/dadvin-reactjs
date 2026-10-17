@@ -1,4 +1,4 @@
-import http from "../utils/axios";
+import http from "./utils/axios";
 
 export async function postAuth(path, payload, options = {}) {
   if (!path)

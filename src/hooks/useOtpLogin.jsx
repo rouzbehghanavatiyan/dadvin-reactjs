@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { login, verifyLoginCode } from "../services";
 import { createLoginPayload } from "../utils/authContract";
-import { getErrorMessage } from "../services/masterService";
+import { getErrorMessage } from "../masterService";
 import { setOtpSession } from "./slices/mainReducer";
 
 export default function useOtpLogin() {

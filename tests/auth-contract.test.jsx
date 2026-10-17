@@ -1,4 +1,8 @@
 import test from "node:test";
+import {
+  lawyerRequiredQuestions,
+  lawyerQuestionRules,
+} from "../src/utils/lawyerProfile";
 import assert from "node:assert/strict";
 import http from "../src/utils/axios";
 import {
@@ -35,6 +39,33 @@ const fixture = {
   password: "must-not-send",
   terms: true,
 };
+
+test("lawyer mandatory answers reject blank, invalid choices and invalid experience", () => {
+  for (const question of lawyerRequiredQuestions) {
+    const rules = lawyerQuestionRules(question);
+    assert.ok(rules.required);
+    assert.notEqual(rules.validate(rules.setValueAs("   ")), true);
+    if (question.options) {
+      assert.equal(rules.validate(question.options[0]), true);
+      assert.notEqual(rules.validate("unrecognized"), true);
+    }
+  }
+  const experience = lawyerQuestionRules(
+    lawyerRequiredQuestions.find((q) => q.name === "experienceYears"),
+  );
+  assert.equal(experience.validate(experience.setValueAs("۰")), true);
+  assert.equal(experience.validate(experience.setValueAs("۱۲")), true);
+  for (const value of ["-1", "1.5", "81", "text"])
+    assert.notEqual(experience.validate(value), true);
+});
+
+test("default Axios origin points directly to the published API", () => {
+  assert.equal(http.defaults.baseURL, "http://171.22.25.222:9090/");
+  assert.equal(
+    http.getUri({ url: "/api/Users/login" }),
+    "http://171.22.25.222:9090/api/Users/login",
+  );
+});
 
 test("login rejects email and normalizes mobile without extra form fields", () => {
   assert.deepEqual(

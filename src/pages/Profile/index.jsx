@@ -15,7 +15,8 @@ import TextArea from "../../UI/TextArea";
 import ProfileSection from "../../components/profile/ProfileSection";
 import ProfilePhoto from "../../components/profile/ProfilePhoto";
 import IdentityFields from "../../components/profile/IdentityFields";
-import ProfessionalFields from "../../components/profile/ProfessionalFields";
+import LawyerOptionalFields from "../../components/profile/LawyerOptionalFields";
+import LawyerRequiredFields from "../../components/profile/LawyerRequiredFields";
 import ProfileSummary from "../../components/profile/ProfileSummary";
 import useProfilePhoto from "../../hooks/useProfilePhoto";
 import usePageTitle from "../../hooks/usePageTitle";
@@ -34,6 +35,13 @@ export default function Profile() {
     registrationPermit: "",
     experienceYears: "",
     education: "",
+    issuingAuthority: "",
+    licenseGrade: "",
+    primaryPractice: "",
+    serviceMode: "",
+    workHistory: "",
+    languages: "",
+    officeAddress: "",
     specialties: [],
     bio: "",
   };
@@ -122,37 +130,48 @@ export default function Profile() {
             <IdentityFields register={register} errors={errors} />
           </ProfileSection>
           {values.role === "lawyer" && (
+            <>
+              <ProfileSection
+                icon={BriefcaseBusiness}
+                title="۶ سؤال اجباری وکیل"
+                description="علاوه بر اطلاعات هویتی، پاسخ به هر شش سؤال برای بررسی فرم لازم است."
+              >
+                <LawyerRequiredFields register={register} errors={errors} />
+              </ProfileSection>
+              <ProfileSection
+                icon={BriefcaseBusiness}
+                title="۶ سؤال اختیاری وکیل"
+                description="برای معرفی کامل‌تر سوابق و حیطه کاری خود پاسخ دهید."
+              >
+                <LawyerOptionalFields
+                  register={register}
+                  errors={errors}
+                  specialtyCount={values.specialties?.length || 0}
+                />
+              </ProfileSection>
+            </>
+          )}
+          {values.role !== "lawyer" && (
             <ProfileSection
-              icon={BriefcaseBusiness}
-              title="اطلاعات حرفه‌ای"
-              description="پروانه، سابقه و تحصیلات خود را تکمیل کنید."
+              icon={FileText}
+              title="درباره من"
+              description="معرفی کوتاه خود را بنویسید؛ اطلاعات تماس را در این بخش قرار ندهید."
             >
-              <ProfessionalFields
-                register={register}
-                errors={errors}
-                specialtyCount={values.specialties?.length || 0}
+              <TextArea
+                label="معرفی کوتاه (اختیاری)"
+                placeholder="درباره زمینه فعالیت و تجربه خود بنویسید…"
+                hint="حداکثر ۱۰۰۰ نویسه"
+                maxLength={1000}
+                {...register("bio", {
+                  maxLength: {
+                    value: 1000,
+                    message: "معرفی نباید بیشتر از ۱۰۰۰ نویسه باشد.",
+                  },
+                })}
+                error={errors.bio?.message}
               />
             </ProfileSection>
           )}
-          <ProfileSection
-            icon={FileText}
-            title="درباره من"
-            description="معرفی کوتاه خود را بنویسید؛ اطلاعات تماس را در این بخش قرار ندهید."
-          >
-            <TextArea
-              label="معرفی کوتاه (اختیاری)"
-              placeholder="درباره زمینه فعالیت و تجربه خود بنویسید…"
-              hint="حداکثر ۱۰۰۰ نویسه"
-              maxLength={1000}
-              {...register("bio", {
-                maxLength: {
-                  value: 1000,
-                  message: "معرفی نباید بیشتر از ۱۰۰۰ نویسه باشد.",
-                },
-              })}
-              error={errors.bio?.message}
-            />
-          </ProfileSection>
           {feedback && <Alert kind="info">{feedback}</Alert>}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-5">
             <p className="text-[11px] text-muted">

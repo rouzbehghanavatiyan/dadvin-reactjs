@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { registerAccount, verifyRegistrationCode } from "../services";
-import { getErrorMessage } from "../services/masterService";
+import { getErrorMessage } from "../masterService";
 
 export default function useRegistration() {
   const [step, setStep] = useState("details");
