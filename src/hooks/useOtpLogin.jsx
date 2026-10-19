@@ -4,6 +4,7 @@ import { login, verifyLoginCode } from "../services";
 import { createLoginPayload } from "../utils/authContract";
 import { getErrorMessage } from "../masterService";
 import { setOtpSession } from "./slices/mainReducer";
+import { beginVerifiedSession, requireOtpDispatch } from "../utils/authSession";
 
 export default function useOtpLogin() {
   const [mobile, setMobile] = useState(null);
@@ -39,7 +40,7 @@ export default function useOtpLogin() {
   function requestCode(values) {
     return run(async (signal) => {
       const payload = createLoginPayload(values);
-      const result = await login(payload, { signal });
+      const result = requireOtpDispatch(await login(payload, { signal }));
       if (signal.aborted) return;
       setMobile(payload.mobile);
       setFeedback({
@@ -50,8 +51,11 @@ export default function useOtpLogin() {
   }
   function verifyCode({ code }) {
     return run(async (signal) => {
-      await verifyLoginCode({ mobile, code }, { signal });
-      if (!signal.aborted) dispatch(setOtpSession(mobile));
+      const result = await verifyLoginCode({ mobile, code }, { signal });
+      if (!signal.aborted) {
+        beginVerifiedSession(result, mobile);
+        dispatch(setOtpSession(mobile));
+      }
     });
   }
   function editMobile() {

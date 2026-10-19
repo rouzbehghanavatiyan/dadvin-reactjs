@@ -4,6 +4,7 @@ import { UserRound, ArrowRight, LogOut } from "lucide-react";
 import Brand from "../UI/Brand";
 import Btn from "../UI/Btn";
 import { clearOtpSession } from "../hooks/slices/mainReducer";
+import { clearVerifiedSession } from "../utils/authSession";
 
 export default function ProfileLayout() {
   const verifiedMobile = useSelector((state) => state.main.verifiedMobile);
@@ -31,6 +32,7 @@ export default function ProfileLayout() {
                   variant="ghost"
                   className="!p-2 !text-xs"
                   onClick={() => {
+                    clearVerifiedSession();
                     dispatch(clearOtpSession());
                     navigate("/login", { replace: true });
                   }}

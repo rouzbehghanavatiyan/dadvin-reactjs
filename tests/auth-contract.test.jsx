@@ -1,4 +1,9 @@
 import test from "node:test";
+import { createServer } from "node:http";
+import {
+  createProfilePayload,
+  createAttachmentPayload,
+} from "../src/utils/profileContract";
 import {
   lawyerRequiredQuestions,
   lawyerQuestionRules,
@@ -10,6 +15,8 @@ import {
   verifyRegistrationCode,
   login,
   verifyLoginCode,
+  createProfile,
+  createAttachment,
 } from "../src/services";
 import {
   createRegisterPayload,
@@ -17,7 +24,16 @@ import {
   createLoginPayload,
   createLoginVerifyPayload,
 } from "../src/utils/authContract";
-import { readAuthResult } from "../src/utils/authResponse";
+import {
+  readAuthResult,
+  readVerificationResult,
+} from "../src/utils/authResponse";
+import {
+  requireOtpDispatch,
+  beginVerifiedSession,
+  getAccessToken,
+  clearVerifiedSession,
+} from "../src/utils/authSession";
 import { getErrorMessage } from "../src/masterService";
 import mainReducer, {
   setOtpSession,
@@ -182,6 +198,212 @@ test("HTTP 200 is not treated as success without explicit API confirmation", () 
       .message,
     "ارسال شد",
   );
+});
+
+test("updated backend success flag is supported without trusting outer success messages", () => {
+  assert.throws(
+    () =>
+      readAuthResult({
+        code: 0,
+        message: "عملیات با موفقیت انجام شد",
+        data: {
+          code: 1,
+          success: false,
+          message: "کاربری با این شماره موبایل یافت نشد.",
+          result: null,
+        },
+      }),
+    /یافت نشد/,
+  );
+  const result = {
+    code: 0,
+    success: true,
+    message: "آزمایش محلی",
+    result: null,
+  };
+  assert.equal(readAuthResult({ code: 0, data: result }), result);
+  assert.throws(() =>
+    readAuthResult({ code: 0, data: { ...result, code: 1 } }),
+  );
+  assert.throws(() =>
+    readAuthResult({ code: 0, data: { success: false, isSuccess: true } }),
+  );
+  assert.throws(() =>
+    readAuthResult({ code: 0, data: { success: true, isSuccess: false } }),
+  );
+});
+
+test("a token returned before OTP cannot establish a verified session", () => {
+  clearVerifiedSession();
+  assert.throws(
+    () =>
+      requireOtpDispatch({
+        success: true,
+        result: { token: "local-fixture-token" },
+      }),
+    /پیش از تأیید/,
+  );
+  assert.equal(getAccessToken(), null);
+  assert.throws(
+    () => beginVerifiedSession({ success: true, result: null }, "09123456789"),
+    /توکن/,
+  );
+  assert.throws(
+    () =>
+      beginVerifiedSession(
+        { result: { token: "local-fixture-token", mobile: "09123456780" } },
+        "09123456789",
+      ),
+    /مطابقت/,
+  );
+  assert.equal(getAccessToken(), null);
+  beginVerifiedSession(
+    { result: { token: "local-fixture-token", mobile: "09123456789" } },
+    "09123456789",
+  );
+  assert.equal(getAccessToken(), "local-fixture-token");
+  clearVerifiedSession();
+  assert.equal(getAccessToken(), null);
+});
+
+test("actual flat verification response establishes session only through verification adapter", () => {
+  const data = { token: "local-fixture-token", mobile: "09123456789" };
+  assert.throws(() => readAuthResult({ code: 0, data }));
+  assert.equal(readVerificationResult({ code: 0, data }), data);
+  for (const response of [
+    { code: 1, data },
+    { code: 0, data: { ...data, success: false } },
+    { code: 0, data: { ...data, token: "" } },
+    { code: 0, data: null },
+  ])
+    assert.throws(() => readVerificationResult(response));
+  beginVerifiedSession(readVerificationResult({ code: 0, data }), data.mobile);
+  assert.equal(getAccessToken(), data.token);
+  clearVerifiedSession();
+});
+
+// All IDs and scores below are local test fixtures, never the production question catalog.
+const profileFixture = {
+  mandatoryAnswers: Array.from({ length: 6 }, (_, index) => ({
+    questionId: index + 1,
+    selectedOptionId: 100 + index,
+  })),
+  optionalAnswers: null,
+  score: 10,
+};
+
+test("profile adapter rejects incomplete, duplicate and text answers before any request", () => {
+  assert.equal(createProfilePayload(profileFixture).profileAttachmentId, null);
+  assert.throws(() =>
+    createProfilePayload({
+      ...profileFixture,
+      mandatoryAnswers: profileFixture.mandatoryAnswers.slice(1),
+    }),
+  );
+  assert.throws(() =>
+    createProfilePayload({
+      ...profileFixture,
+      optionalAnswers: [profileFixture.mandatoryAnswers[0]],
+    }),
+  );
+  assert.throws(() =>
+    createProfilePayload({ ...profileFixture, score: undefined }),
+  );
+  assert.throws(() =>
+    createProfilePayload({
+      ...profileFixture,
+      mandatoryAnswers: profileFixture.mandatoryAnswers.map((answer) => ({
+        ...answer,
+        selectedOptionId: "حقوقی",
+      })),
+    }),
+  );
+  assert.deepEqual(
+    Object.keys(
+      createProfilePayload({
+        ...profileFixture,
+        mobile: "must-not-send",
+        token: "must-not-send",
+      }),
+    ).sort(),
+    ["mandatoryAnswers", "optionalAnswers", "profileAttachmentId", "score"],
+  );
+});
+
+test("profile services refuse missing Bearer token and invalid photo without network", async () => {
+  let count = 0;
+  const previousAdapter = http.defaults.adapter;
+  http.defaults.adapter = async () => {
+    count++;
+    throw new Error("unexpected network");
+  };
+  try {
+    await assert.rejects(createProfile(profileFixture, null), /توکن/);
+    await assert.rejects(
+      createAttachment(
+        new File(["x"], "file.txt", { type: "text/plain" }),
+        {},
+        "fixture-token",
+      ),
+      /فرمت/,
+    );
+    assert.equal(count, 0);
+  } finally {
+    http.defaults.adapter = previousAdapter;
+  }
+});
+
+test("real Axios transport sends binary FormFiles with boundary and scoped Bearer header", async () => {
+  const received = [];
+  const server = createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    received.push({
+      url: request.url,
+      headers: request.headers,
+      body: Buffer.concat(chunks).toString(),
+    });
+    response.setHeader("Content-Type", "application/json");
+    response.end(
+      JSON.stringify({
+        code: 0,
+        data: { code: 0, success: true, result: null },
+      }),
+    );
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const options = {
+      baseURL: `http://127.0.0.1:${server.address().port}`,
+      proxy: false,
+    };
+    const file = new File(["local-test-image-bytes"], "local-test.png", {
+      type: "image/png",
+    });
+    const form = createAttachmentPayload(file);
+    assert.deepEqual([...form.keys()], ["FormFiles"]);
+    await createAttachment(file, {}, "local-fixture-token", options);
+    await createProfile(profileFixture, "local-fixture-token", options);
+    assert.equal(received[0].url, "/api/Attachment/createAttachment");
+    assert.match(
+      received[0].headers["content-type"],
+      /^multipart\/form-data; boundary=/,
+    );
+    assert.match(
+      received[0].body,
+      /name="FormFiles"; filename="local-test.png"/,
+    );
+    assert.match(received[0].body, /local-test-image-bytes/);
+    assert.equal(
+      received[0].headers.authorization,
+      "Bearer local-fixture-token",
+    );
+    assert.equal(received[1].url, "/api/Users/createProfile");
+    assert.equal(JSON.parse(received[1].body).profileAttachmentId, null);
+    assert.equal(http.defaults.headers.common.Authorization, undefined);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 test("backend lookup error is displayed instead of a false success", () => {
   const error = {

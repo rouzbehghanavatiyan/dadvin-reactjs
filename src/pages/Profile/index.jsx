@@ -82,13 +82,14 @@ export default function Profile() {
           </p>
         </div>
         <span className="rounded-full border border-line bg-white px-4 py-2 text-[11px] text-muted">
-          پیش‌نمایش · اتصال سرور در انتظار API
+          پیش‌نمایش · در انتظار قرارداد سؤال‌ها
         </span>
       </div>
       <div className="mb-7">
         <Alert kind="info">
-          این فرم فعلاً برای آماده‌سازی پروفایل است. اطلاعات و عکس فقط در حافظه
-          همین صفحه هستند و با بازخوانی صفحه پاک می‌شوند.
+          این فرم فعلاً برای آماده‌سازی پروفایل است. سؤال‌ها پیشنهادی‌اند؛ ذخیره
+          پس از دریافت فهرست رسمی سؤال‌ها و گزینه‌های سرور فعال می‌شود. اطلاعات
+          و عکس فقط در حافظه همین صفحه هستند و با بازخوانی صفحه پاک می‌شوند.
         </Alert>
       </div>
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_300px]">
@@ -175,7 +176,7 @@ export default function Profile() {
           {feedback && <Alert kind="info">{feedback}</Alert>}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-5">
             <p className="text-[11px] text-muted">
-              ذخیره روی سرور پس از اتصال API فعال می‌شود.
+              ذخیره پس از تطبیق سؤال‌ها با سرور فعال می‌شود.
             </p>
             <div className="flex gap-2">
               <Btn variant="ghost" onClick={clear}>

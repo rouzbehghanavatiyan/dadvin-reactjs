@@ -9,6 +9,26 @@ export async function postAuth(path, payload, options = {}) {
   return data;
 }
 
+export function bearerOptions(token, options = {}) {
+  if (typeof token !== "string" || !token.trim() || /\s/.test(token))
+    throw new Error(
+      "توکن معتبر سرور برای ذخیره پروفایل لازم است. دوباره وارد شوید.",
+    );
+  return {
+    ...options,
+    headers: { ...options.headers, Authorization: `Bearer ${token}` },
+  };
+}
+
+export async function postMultipart(path, payload, options = {}) {
+  const { data } = await http.post(path, payload, {
+    ...options,
+    // Remove the shared JSON header; the browser must set the multipart boundary.
+    headers: { ...options.headers, "Content-Type": undefined },
+  });
+  return data;
+}
+
 export function getErrorMessage(error) {
   if (!error.isAxiosError)
     return error.message || "خطایی رخ داد. دوباره تلاش کنید.";

@@ -1,32 +1,51 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { registerAccount, verifyRegistrationCode } from "../services";
 import { getErrorMessage } from "../masterService";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { beginVerifiedSession } from "../utils/authSession";
+import { createLoginPayload } from "../utils/authContract";
+import { setOtpSession } from "./slices/mainReducer";
 
 export default function useRegistration() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [step, setStep] = useState("details");
   const [pendingRegistration, setPendingRegistration] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [busy, setBusy] = useState(false);
-  const requestInFlight = useRef(false);
+  const requestInFlight = useRef(null);
+  useEffect(
+    () => () => {
+      requestInFlight.current?.abort();
+      requestInFlight.current = null;
+    },
+    [],
+  );
 
   async function run(action) {
     if (requestInFlight.current) return;
-    requestInFlight.current = true;
+    const request = new AbortController();
+    requestInFlight.current = request;
     setBusy(true);
     setFeedback(null);
     try {
-      await action();
+      await action(request.signal);
     } catch (error) {
-      setFeedback({ kind: "error", message: getErrorMessage(error) });
+      if (!request.signal.aborted)
+        setFeedback({ kind: "error", message: getErrorMessage(error) });
     } finally {
-      requestInFlight.current = false;
-      setBusy(false);
+      if (requestInFlight.current === request) {
+        requestInFlight.current = null;
+        setBusy(false);
+      }
     }
   }
 
   function requestCode(values) {
-    return run(async () => {
-      const result = await registerAccount(values);
+    return run(async (signal) => {
+      const result = await registerAccount(values, { signal });
+      if (signal.aborted) return;
       // Keep the role and permit from this exact registration for OTP verification.
       setPendingRegistration({ ...values });
       setFeedback({
@@ -38,18 +57,27 @@ export default function useRegistration() {
   }
 
   function verifyCode({ code }) {
-    return run(async () => {
-      const result = await verifyRegistrationCode({
-        ...pendingRegistration,
-        code,
+    return run(async (signal) => {
+      const result = await verifyRegistrationCode(
+        {
+          ...pendingRegistration,
+          code,
+        },
+        { signal },
+      );
+      if (signal.aborted) return;
+      const { mobile } = createLoginPayload({
+        mobile: pendingRegistration.phoneNumber,
       });
+      beginVerifiedSession(result, mobile);
+      dispatch(setOtpSession(mobile));
       setFeedback({
         kind: "success",
         message: result.message || "کد تأیید با موفقیت تأیید شد.",
       });
       setStep("complete");
       setPendingRegistration(null);
-      // Verification is confirmed by the server. Session/token behavior is not yet documented.
+      navigate("/panel", { replace: true });
     });
   }
 
