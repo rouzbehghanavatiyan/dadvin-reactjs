@@ -13,11 +13,15 @@ export function readAuthResult(response) {
     (data?.code !== undefined && data.code !== 0)
   ) {
     const message = response?.data?.message || response?.message;
-    throw new Error(
+    const error = new Error(
       typeof message === "string" && message.trim()
         ? message
         : "سرور موفقیت عملیات را تأیید نکرد. لطفاً دوباره تلاش کنید.",
     );
+    error.requiresRegistration =
+      data?.code === 1 &&
+      data?.message === "کاربری با این شماره موبایل یافت نشد.";
+    throw error;
   }
   return response.data;
 }

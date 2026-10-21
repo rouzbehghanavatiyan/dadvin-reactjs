@@ -183,7 +183,7 @@ export default function Profile() {
                 <RotateCcw size={15} />
                 پاک‌کردن فرم
               </Btn>
-              <Btn type="submit" disabled={photo.busy}>
+              <Btn type="submit" disabled={photo.busy || Boolean(photo.error)}>
                 <Check size={16} />
                 بررسی و پیش‌نمایش
               </Btn>

@@ -40,7 +40,7 @@ export default function ProfilePhoto({
             <Upload size={16} />
             {photo ? "تغییر عکس" : "انتخاب عکس"}
           </Btn>
-          {photo && (
+          {(photo || error || busy) && (
             <Btn
               variant="ghost"
               onClick={onRemove}

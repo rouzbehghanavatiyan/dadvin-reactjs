@@ -12,7 +12,7 @@ import {
 import { readAuthResult, readVerificationResult } from "../utils/authResponse";
 import { getAccessToken } from "../utils/authSession";
 
-// Paths and request field names verified against Swagger on 2026-10-19.
+// Paths and request field names verified against Swagger on 2026-10-21.
 export const login = async (values, options) =>
   readAuthResult(
     await postAuth("/api/Users/login", createLoginPayload(values), options),
@@ -36,7 +36,7 @@ export const registerAccount = async (values, options) =>
 export const verifyRegistrationCode = async (values, options) =>
   readVerificationResult(
     await postAuth(
-      "/api/Users/verifyLoginCode",
+      "/api/Users/verifySignUpCode",
       createVerifyPayload(values),
       options,
     ),
@@ -74,3 +74,36 @@ export const createAttachment = async (
     ),
   );
 };
+
+export async function saveProfile(
+  values,
+  {
+    photo = null,
+    attachmentMetadata = {},
+    readAttachmentId,
+    token = getAccessToken(),
+    signal,
+  } = {},
+) {
+  const payload = createProfilePayload(values);
+  bearerOptions(token); // Fail before uploading if there is no verified session.
+  if (photo) {
+    createAttachmentPayload(photo, attachmentMetadata);
+    // Swagger has no response schema. Bind this reader only to a confirmed response.
+    if (typeof readAttachmentId !== "function")
+      throw new Error("قرارداد شناسه برگشتی عکس هنوز مشخص نشده است.");
+    const upload = await createAttachment(photo, attachmentMetadata, token, {
+      signal,
+    });
+    const attachmentId = readAttachmentId(upload);
+    if (
+      !Number.isInteger(attachmentId) ||
+      attachmentId <= 0 ||
+      attachmentId > 2147483647
+    )
+      throw new Error("سرور شناسه معتبر عکس برنگرداند؛ پروفایل ذخیره نشد.");
+    payload.profileAttachmentId = attachmentId;
+  }
+  if (signal?.aborted) throw new Error("ذخیره پروفایل لغو شد.");
+  return createProfile(payload, token, { signal });
+}

@@ -4,6 +4,8 @@ import Input from "../../UI/Input";
 import Btn from "../../UI/Btn";
 import Alert from "../../UI/Alert";
 import { mobileRules } from "../../utils/validation";
+import { Link } from "react-router-dom";
+import { normalizeDigits } from "../../utils/StringHelper";
 
 export default function MobileLoginForm({
   onSubmit,
@@ -14,6 +16,7 @@ export default function MobileLoginForm({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm({ defaultValues: { mobile: defaultMobile || "" } });
   return (
@@ -32,6 +35,15 @@ export default function MobileLoginForm({
         error={errors.mobile?.message}
       />
       {feedback && <Alert kind={feedback.kind}>{feedback.message}</Alert>}
+      {feedback?.requiresRegistration && (
+        <Link
+          to="/register"
+          state={{ mobile: normalizeDigits(watch("mobile") || "").trim() }}
+          className="block rounded-xl border border-line p-3 text-center text-sm text-navy"
+        >
+          با همین شماره ثبت‌نام کنید
+        </Link>
+      )}
       <Btn type="submit" loading={busy} className="w-full !rounded-lg !py-4">
         دریافت کد تأیید
         <ArrowLeft size={17} />

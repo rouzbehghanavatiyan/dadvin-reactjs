@@ -21,6 +21,7 @@ export default function useProfilePhoto() {
   async function choose(file) {
     if (!file) return;
     const current = ++selection.current;
+    setPhoto(null);
     setBusy(false);
     setError("");
     const problem = validateProfilePhoto(file);

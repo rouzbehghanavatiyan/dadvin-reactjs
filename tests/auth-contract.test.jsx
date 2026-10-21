@@ -17,6 +17,7 @@ import {
   verifyLoginCode,
   createProfile,
   createAttachment,
+  saveProfile,
 } from "../src/services";
 import {
   createRegisterPayload,
@@ -231,6 +232,106 @@ test("updated backend success flag is supported without trusting outer success m
   assert.throws(() =>
     readAuthResult({ code: 0, data: { success: true, isSuccess: false } }),
   );
+});
+
+test("unknown phone offers signup only for the observed account-not-found error", () => {
+  try {
+    readAuthResult({
+      code: 0,
+      data: {
+        code: 1,
+        success: false,
+        message: "کاربری با این شماره موبایل یافت نشد.",
+      },
+    });
+    assert.fail("expected failure");
+  } catch (error) {
+    assert.equal(error.requiresRegistration, true);
+  }
+  try {
+    readAuthResult({
+      code: 0,
+      data: { code: 1, success: false, message: "کد نادرست است" },
+    });
+    assert.fail("expected failure");
+  } catch (error) {
+    assert.equal(error.requiresRegistration, false);
+  }
+});
+
+test("profile save uploads first, skips upload without photo and stops on upload failure", async () => {
+  const previous = http.defaults.adapter;
+  const requests = [];
+  let uploadFailure = false;
+  http.defaults.adapter = async (config) => {
+    requests.push(config);
+    return {
+      status: 200,
+      headers: {},
+      config,
+      data: {
+        code: 0,
+        data: {
+          success: !(uploadFailure && config.url.includes("Attachment")),
+          message: "local fixture",
+          result: { fixtureId: 77 },
+        },
+      },
+    };
+  };
+  const photo = new File(["fixture"], "fixture.png", { type: "image/png" });
+  const options = {
+    token: "local-fixture",
+    photo,
+    readAttachmentId: (upload) => upload.result.fixtureId,
+  };
+  try {
+    await saveProfile(profileFixture, options);
+    assert.deepEqual(
+      requests.map((r) => r.url),
+      ["/api/Attachment/createAttachment", "/api/Users/createProfile"],
+    );
+    assert.equal(JSON.parse(requests[1].data).profileAttachmentId, 77);
+    requests.length = 0;
+    await saveProfile(profileFixture, { token: "local-fixture" });
+    assert.deepEqual(
+      requests.map((r) => r.url),
+      ["/api/Users/createProfile"],
+    );
+    assert.equal(JSON.parse(requests[0].data).profileAttachmentId, null);
+    requests.length = 0;
+    uploadFailure = true;
+    await assert.rejects(saveProfile(profileFixture, options));
+    assert.deepEqual(
+      requests.map((r) => r.url),
+      ["/api/Attachment/createAttachment"],
+    );
+    requests.length = 0;
+    uploadFailure = false;
+    await assert.rejects(
+      saveProfile(profileFixture, { ...options, readAttachmentId: () => null }),
+    );
+    assert.equal(requests.length, 1);
+    requests.length = 0;
+    await assert.rejects(
+      saveProfile(profileFixture, { ...options, readAttachmentId: undefined }),
+    );
+    await assert.rejects(
+      saveProfile({ ...profileFixture, mandatoryAnswers: [] }, options),
+    );
+    assert.equal(requests.length, 0);
+    const controller = new AbortController();
+    controller.abort();
+    await assert.rejects(
+      saveProfile(profileFixture, {
+        token: "local-fixture",
+        signal: controller.signal,
+      }),
+    );
+    assert.equal(requests.length, 0);
+  } finally {
+    http.defaults.adapter = previous;
+  }
 });
 
 test("a token returned before OTP cannot establish a verified session", () => {
@@ -454,7 +555,7 @@ test("both services use the global Axios instance and the exact Swagger paths", 
       requests.map(({ url, method }) => ({ url, method })),
       [
         { url: "/api/Users/register", method: "post" },
-        { url: "/api/Users/verifyLoginCode", method: "post" },
+        { url: "/api/Users/verifySignUpCode", method: "post" },
         { url: "/api/Users/login", method: "post" },
         { url: "/api/Users/verifyLoginCode", method: "post" },
       ],

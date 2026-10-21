@@ -9,8 +9,13 @@ import OtpForm from "./OtpForm";
 import RegistrationComplete from "./RegistrationComplete";
 import useRegistration from "../../hooks/useRegistration";
 import { setSelectedRole } from "../../hooks/slices/mainReducer";
+import { useLocation } from "react-router-dom";
 
 export default function RegisterForm() {
+  const location = useLocation();
+  const initialMobile = /^09\d{9}$/.test(location.state?.mobile || "")
+    ? location.state.mobile
+    : "";
   const savedRole = useSelector((state) => state.main.selectedRole);
   const dispatch = useDispatch();
   const {
@@ -24,7 +29,7 @@ export default function RegisterForm() {
     defaultValues: {
       name: "",
       lastName: "",
-      phoneNumber: "",
+      phoneNumber: initialMobile,
       email: "",
       nationalCode: "",
       registrationPermit: "",

@@ -29,7 +29,11 @@ export default function useOtpLogin() {
       await action(request.signal);
     } catch (error) {
       if (!request.signal.aborted)
-        setFeedback({ kind: "error", message: getErrorMessage(error) });
+        setFeedback({
+          kind: "error",
+          message: getErrorMessage(error),
+          requiresRegistration: error.requiresRegistration === true,
+        });
     } finally {
       if (activeRequest.current === request) {
         activeRequest.current = null;

@@ -24,6 +24,7 @@ export function createRegisterPayload(values) {
 }
 
 export function createVerifyPayload(values) {
+  // VerifySignUpCodeDto: personal details are never sent to verifyLoginCode.
   return {
     mobile: normalizeDigits(values.phoneNumber || "").trim(),
     code: normalizeDigits(values.code || "").trim(),
