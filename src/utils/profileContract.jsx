@@ -60,14 +60,15 @@ export function createProfilePayload(values) {
 export function createAttachmentPayload(file, metadata = {}) {
   const problem = validateProfilePhoto(file);
   if (problem) throw new Error(problem);
+  const fields = { ...createProfilePhotoMetadata(file), ...metadata };
   const payload = new FormData();
   // Swagger publishes FormFiles (array of binary files), not FormFile or a JSON file.
   payload.append("FormFiles", file, file.name);
   for (const key of ["AttachmentType", "FileName", "Ext"]) {
-    if (metadata[key] != null) {
-      if (typeof metadata[key] !== "string")
+    if (fields[key] != null) {
+      if (typeof fields[key] !== "string")
         throw new Error("مشخصات فایل نامعتبر است.");
-      payload.append(key, metadata[key]);
+      payload.append(key, fields[key]);
     }
   }
   if (metadata.AttachmentId != null) {
@@ -76,4 +77,19 @@ export function createAttachmentPayload(file, metadata = {}) {
     payload.append("AttachmentId", String(metadata.AttachmentId));
   }
   return payload;
+}
+
+// Profile-photo metadata confirmed by the backend maintainer on 2026-10-24.
+export function createProfilePhotoMetadata(file) {
+  const problem = validateProfilePhoto(file);
+  if (problem) throw new Error(problem);
+  const extensions = {
+    "image/jpeg": ["jpg", "jpeg"],
+    "image/png": ["png"],
+    "image/webp": ["webp"],
+  };
+  const ext = file.name?.split(".").pop().toLowerCase();
+  if (!extensions[file.type].includes(ext))
+    throw new Error("پسوند فایل با نوع عکس مطابقت ندارد.");
+  return { AttachmentType: "pf", FileName: file.name, Ext: ext };
 }

@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import {
   createProfilePayload,
   createAttachmentPayload,
+  createProfilePhotoMetadata,
 } from "../src/utils/profileContract";
 import {
   lawyerRequiredQuestions,
@@ -421,6 +422,24 @@ const profileFixture = {
   score: 10,
 };
 
+test("profile-photo metadata uses pf, original filename and lowercase extension without inventing an attachment ID", () => {
+  for (const [name, type, ext] of [
+    ["portrait.JPG", "image/jpeg", "jpg"],
+    ["portrait.jpeg", "image/jpeg", "jpeg"],
+    ["عکس.PNG", "image/png", "png"],
+    ["portrait.webp", "image/webp", "webp"],
+  ]) {
+    const file = new File(["fixture"], name, { type });
+    assert.deepEqual(createProfilePhotoMetadata(file), {
+      AttachmentType: "pf", FileName: name, Ext: ext,
+    });
+    assert.equal(createAttachmentPayload(file).has("AttachmentId"), false);
+  }
+  assert.throws(() => createProfilePhotoMetadata(
+    new File(["fixture"], "portrait.txt", { type: "image/png" }),
+  ), /پسوند/);
+});
+
 test("profile adapter rejects incomplete, duplicate and text answers before any request", () => {
   assert.equal(createProfilePayload(profileFixture).profileAttachmentId, null);
   assert.throws(() =>
@@ -510,7 +529,11 @@ test("real Axios transport sends binary FormFiles with boundary and scoped Beare
       type: "image/png",
     });
     const form = createAttachmentPayload(file);
-    assert.deepEqual([...form.keys()], ["FormFiles"]);
+    assert.deepEqual([...form.keys()], ["FormFiles", "AttachmentType", "FileName", "Ext"]);
+    assert.equal(form.get("AttachmentType"), "pf");
+    assert.equal(form.get("FileName"), "local-test.png");
+    assert.equal(form.get("Ext"), "png");
+    assert.equal(form.has("AttachmentId"), false);
     await createAttachment(file, {}, "local-fixture-token", options);
     await createProfile(profileFixture, "local-fixture-token", options);
     assert.equal(received[0].url, "/api/Attachment/createAttachment");
