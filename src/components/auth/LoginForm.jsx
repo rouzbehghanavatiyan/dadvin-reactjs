@@ -1,7 +1,12 @@
 import useOtpLogin from "../../hooks/useOtpLogin";
 import MobileLoginForm from "./MobileLoginForm";
 import OtpForm from "./OtpForm";
+import { useLocation } from "react-router-dom";
 export default function LoginForm() {
+  const location = useLocation();
+  const initialMobile = /^09\d{9}$/.test(location.state?.mobile || "")
+    ? location.state.mobile
+    : "";
   const flow = useOtpLogin();
   if (flow.mobile)
     return (
@@ -20,6 +25,7 @@ export default function LoginForm() {
       onSubmit={flow.requestCode}
       busy={flow.busy}
       feedback={flow.feedback}
+      defaultMobile={initialMobile}
     />
   );
 }

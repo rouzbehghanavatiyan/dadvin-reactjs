@@ -33,7 +33,11 @@ export default function useRegistration() {
       await action(request.signal);
     } catch (error) {
       if (!request.signal.aborted)
-        setFeedback({ kind: "error", message: getErrorMessage(error) });
+        setFeedback({
+          kind: "error",
+          message: getErrorMessage(error),
+          loginMobile: error.loginMobile,
+        });
     } finally {
       if (requestInFlight.current === request) {
         requestInFlight.current = null;
@@ -44,7 +48,16 @@ export default function useRegistration() {
 
   function requestCode(values) {
     return run(async (signal) => {
-      const result = await registerAccount(values, { signal });
+      let result;
+      try {
+        result = await registerAccount(values, { signal });
+      } catch (error) {
+        if (error.requiresLogin)
+          error.loginMobile = createLoginPayload({
+            mobile: values.phoneNumber,
+          }).mobile;
+        throw error;
+      }
       if (signal.aborted) return;
       // Keep the role and permit from this exact registration for OTP verification.
       setPendingRegistration({ ...values });

@@ -9,7 +9,7 @@ import OtpForm from "./OtpForm";
 import RegistrationComplete from "./RegistrationComplete";
 import useRegistration from "../../hooks/useRegistration";
 import { setSelectedRole } from "../../hooks/slices/mainReducer";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export default function RegisterForm() {
   const location = useLocation();
@@ -69,6 +69,15 @@ export default function RegisterForm() {
       </fieldset>
       {flow.feedback && (
         <Alert kind={flow.feedback.kind}>{flow.feedback.message}</Alert>
+      )}
+      {flow.feedback?.loginMobile && (
+        <Link
+          to="/login"
+          state={{ mobile: flow.feedback.loginMobile }}
+          className="block rounded-xl border border-line p-3 text-center text-sm text-navy"
+        >
+          ورود به حساب موجود
+        </Link>
       )}
       <Btn type="submit" loading={flow.busy} className="w-full">
         ارسال کد تأیید

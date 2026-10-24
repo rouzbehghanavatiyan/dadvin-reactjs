@@ -57,6 +57,34 @@ const fixture = {
   terms: true,
 };
 
+test("real duplicate signup failure must not be mistaken for the outer success envelope", () => {
+  const response = {
+    code: 0,
+    message: "عملیات با موفقیت انجام شد",
+    data: {
+      isSuccess: false,
+      message: "این شماره موبایل قبلاً ثبت‌نام شده است. لطفاً وارد شوید.",
+    },
+  };
+  assert.throws(
+    () => readAuthResult(response),
+    (error) => {
+      assert.equal(error.message, response.data.message);
+      assert.equal(error.requiresLogin, true);
+      assert.equal(error.requiresRegistration, false);
+      return true;
+    },
+  );
+  assert.throws(
+    () =>
+      readAuthResult({
+        code: 0,
+        data: { isSuccess: false, message: "خطای دیگری رخ داد" },
+      }),
+    (error) => error.requiresLogin === false,
+  );
+});
+
 test("lawyer mandatory answers reject blank, invalid choices and invalid experience", () => {
   for (const question of lawyerRequiredQuestions) {
     const rules = lawyerQuestionRules(question);

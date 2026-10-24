@@ -21,6 +21,10 @@ export function readAuthResult(response) {
     error.requiresRegistration =
       data?.code === 1 &&
       data?.message === "کاربری با این شماره موبایل یافت نشد.";
+    error.requiresLogin =
+      data?.isSuccess === false &&
+      data?.message ===
+        "این شماره موبایل قبلاً ثبت‌نام شده است. لطفاً وارد شوید.";
     throw error;
   }
   return response.data;
