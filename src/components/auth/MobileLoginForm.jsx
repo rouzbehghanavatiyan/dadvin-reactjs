@@ -5,7 +5,6 @@ import Btn from "../../UI/Btn";
 import Alert from "../../UI/Alert";
 import { mobileRules } from "../../utils/validation";
 import { Link } from "react-router-dom";
-import { normalizeDigits } from "../../utils/StringHelper";
 
 export default function MobileLoginForm({
   onSubmit,
@@ -16,7 +15,6 @@ export default function MobileLoginForm({
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm({ defaultValues: { mobile: defaultMobile || "" } });
   return (
@@ -38,7 +36,7 @@ export default function MobileLoginForm({
       {feedback?.requiresRegistration && (
         <Link
           to="/register"
-          state={{ mobile: normalizeDigits(watch("mobile") || "").trim() }}
+          state={{ mobile: feedback.registrationMobile }}
           className="block rounded-xl border border-line p-3 text-center text-sm text-navy"
         >
           با همین شماره ثبت‌نام کنید

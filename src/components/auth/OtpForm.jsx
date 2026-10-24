@@ -4,6 +4,7 @@ import Input from "../../UI/Input";
 import Btn from "../../UI/Btn";
 import Alert from "../../UI/Alert";
 import { normalizeDigits } from "../../utils/StringHelper";
+import OtpResend from "./OtpResend";
 
 export default function OtpForm({
   phoneNumber,
@@ -11,6 +12,8 @@ export default function OtpForm({
   editDetails,
   busy,
   feedback,
+  resendCode,
+  secondsLeft = 0,
   submitLabel = "تأیید کد و تکمیل ثبت‌نام",
   editLabel = "ویرایش مشخصات یا شماره موبایل",
 }) {
@@ -52,6 +55,13 @@ export default function OtpForm({
           {submitLabel}
         </Btn>
       </form>
+      {resendCode && (
+        <OtpResend
+          onResend={resendCode}
+          secondsLeft={secondsLeft}
+          busy={busy}
+        />
+      )}
       <Btn
         variant="ghost"
         onClick={editDetails}

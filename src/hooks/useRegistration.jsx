@@ -6,10 +6,12 @@ import { useNavigate } from "react-router-dom";
 import { beginVerifiedSession } from "../utils/authSession";
 import { createLoginPayload } from "../utils/authContract";
 import { setOtpSession } from "./slices/mainReducer";
+import useOtpCooldown from "./useOtpCooldown";
 
 export default function useRegistration() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const cooldown = useOtpCooldown();
   const [step, setStep] = useState("details");
   const [pendingRegistration, setPendingRegistration] = useState(null);
   const [feedback, setFeedback] = useState(null);
@@ -61,6 +63,7 @@ export default function useRegistration() {
       if (signal.aborted) return;
       // Keep the role and permit from this exact registration for OTP verification.
       setPendingRegistration({ ...values });
+      cooldown.start();
       setFeedback({
         kind: "success",
         message: result.message || "کد تأیید ارسال شد.",
@@ -100,6 +103,10 @@ export default function useRegistration() {
     setFeedback(null);
     setPendingRegistration(null);
   }
+  function resendCode() {
+    if (!pendingRegistration || !cooldown.canResend()) return;
+    return requestCode(pendingRegistration);
+  }
 
   return {
     step,
@@ -109,5 +116,8 @@ export default function useRegistration() {
     requestCode,
     verifyCode,
     editDetails,
+    resendCode,
+    secondsLeft: cooldown.secondsLeft,
+    challengeVersion: cooldown.challengeVersion,
   };
 }

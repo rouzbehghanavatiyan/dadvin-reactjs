@@ -11,6 +11,9 @@ export default function LoginForm() {
   if (flow.mobile)
     return (
       <OtpForm
+        key={flow.challengeVersion}
+        resendCode={flow.resendCode}
+        secondsLeft={flow.secondsLeft}
         phoneNumber={flow.mobile}
         verifyCode={flow.verifyCode}
         editDetails={flow.editMobile}
@@ -25,7 +28,7 @@ export default function LoginForm() {
       onSubmit={flow.requestCode}
       busy={flow.busy}
       feedback={flow.feedback}
-      defaultMobile={initialMobile}
+      defaultMobile={flow.draftMobile || initialMobile}
     />
   );
 }

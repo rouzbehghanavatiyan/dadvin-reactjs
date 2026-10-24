@@ -35,7 +35,7 @@ export function getErrorMessage(error) {
   if (error.code === "ECONNABORTED")
     return "پاسخ سرور طول کشید. لطفاً دوباره تلاش کنید.";
   if (!error.response)
-    return "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.";
+    return "ارتباط با سامانه برقرار نشد. کمی بعد دوباره تلاش کنید.";
   const body = error.response.data;
   const serverMessage = body?.data?.message || body?.message;
   if (typeof serverMessage === "string" && serverMessage.trim())
@@ -50,5 +50,7 @@ export function getErrorMessage(error) {
     return "تأیید هویت انجام نشد. شماره موبایل و کد تأیید را بررسی کنید.";
   if (error.response.status === 429)
     return "تعداد درخواست‌ها زیاد است. کمی بعد دوباره تلاش کنید.";
+  if (error.response.status >= 500)
+    return "سرویس موقتاً پاسخ‌گو نیست. کمی بعد دوباره تلاش کنید.";
   return "درخواست انجام نشد. لطفاً اطلاعات را بررسی کنید و دوباره تلاش کنید.";
 }

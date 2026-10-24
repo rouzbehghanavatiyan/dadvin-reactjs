@@ -5,9 +5,12 @@ import { createLoginPayload } from "../utils/authContract";
 import { getErrorMessage } from "../masterService";
 import { setOtpSession } from "./slices/mainReducer";
 import { beginVerifiedSession, requireOtpDispatch } from "../utils/authSession";
+import useOtpCooldown from "./useOtpCooldown";
 
 export default function useOtpLogin() {
   const [mobile, setMobile] = useState(null);
+  const [draftMobile, setDraftMobile] = useState("");
+  const cooldown = useOtpCooldown();
   const [feedback, setFeedback] = useState(null);
   const [busy, setBusy] = useState(false);
   const activeRequest = useRef(null);
@@ -33,6 +36,7 @@ export default function useOtpLogin() {
           kind: "error",
           message: getErrorMessage(error),
           requiresRegistration: error.requiresRegistration === true,
+          registrationMobile: error.registrationMobile,
         });
     } finally {
       if (activeRequest.current === request) {
@@ -44,9 +48,18 @@ export default function useOtpLogin() {
   function requestCode(values) {
     return run(async (signal) => {
       const payload = createLoginPayload(values);
-      const result = requireOtpDispatch(await login(payload, { signal }));
+      let result;
+      try {
+        result = requireOtpDispatch(await login(payload, { signal }));
+      } catch (error) {
+        if (error.requiresRegistration)
+          error.registrationMobile = payload.mobile;
+        throw error;
+      }
       if (signal.aborted) return;
+      setDraftMobile(payload.mobile);
       setMobile(payload.mobile);
+      cooldown.start();
       setFeedback({
         kind: "success",
         message: result.message || "کد تأیید ارسال شد.",
@@ -67,5 +80,20 @@ export default function useOtpLogin() {
     setMobile(null);
     setFeedback(null);
   }
-  return { mobile, feedback, busy, requestCode, verifyCode, editMobile };
+  function resendCode() {
+    if (!mobile || !cooldown.canResend()) return;
+    return requestCode({ mobile });
+  }
+  return {
+    mobile,
+    draftMobile,
+    feedback,
+    busy,
+    requestCode,
+    verifyCode,
+    editMobile,
+    resendCode,
+    secondsLeft: cooldown.secondsLeft,
+    challengeVersion: cooldown.challengeVersion,
+  };
 }

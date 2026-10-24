@@ -46,6 +46,9 @@ export default function RegisterForm() {
   if (flow.step === "otp")
     return (
       <OtpForm
+        key={flow.challengeVersion}
+        resendCode={flow.resendCode}
+        secondsLeft={flow.secondsLeft}
         phoneNumber={flow.pendingRegistration.phoneNumber}
         verifyCode={flow.verifyCode}
         editDetails={() => {
