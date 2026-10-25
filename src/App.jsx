@@ -7,16 +7,18 @@ import Profile from "./pages/Profile";
 import ProfileLayout from "./layouts/ProfileLayout";
 import RequireOtpSession from "./routes/RequireOtpSession";
 import Panel from "./pages/Dashboard";
+import SessionObserver from "./components/auth/SessionObserver";
 
 export default function App() {
   return (
     <BrowserRouter>
+      <SessionObserver />
       <Routes>
         <Route element={<ProfileLayout />}>
           <Route element={<RequireOtpSession />}>
             <Route path="panel" element={<Panel />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
-          <Route path="profile" element={<Profile />} />
         </Route>
         <Route element={<AuthLayout />}>
           <Route index element={<Navigate to="/login" replace />} />

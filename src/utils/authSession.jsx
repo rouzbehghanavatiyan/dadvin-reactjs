@@ -1,6 +1,7 @@
 let accessToken = null;
+const expirationListeners = new Set();
 
-// Memory only. Call this only after a successful verifyLoginCode response.
+// Memory only. Call only after server-confirmed login/signup OTP verification.
 export function beginVerifiedSession(result, mobile) {
   const account = result?.token ? result : result?.result;
   const token = account?.token;
@@ -14,6 +15,19 @@ export function beginVerifiedSession(result, mobile) {
 export const getAccessToken = () => accessToken;
 export function clearVerifiedSession() {
   accessToken = null;
+}
+
+export function subscribeSessionExpiration(listener) {
+  expirationListeners.add(listener);
+  return () => expirationListeners.delete(listener);
+}
+
+// A delayed failure from an older request must not log out a newer session.
+export function expireVerifiedSession(rejectedToken) {
+  if (!accessToken || rejectedToken !== accessToken) return false;
+  clearVerifiedSession();
+  for (const listener of expirationListeners) listener();
+  return true;
 }
 
 export function requireOtpDispatch(result) {

@@ -16,6 +16,7 @@ export function bearerOptions(token, options = {}) {
     );
   return {
     ...options,
+    authRequired: true,
     headers: { ...options.headers, Authorization: `Bearer ${token}` },
   };
 }
@@ -30,6 +31,8 @@ export async function postMultipart(path, payload, options = {}) {
 }
 
 export function getErrorMessage(error) {
+  if (error.sessionExpired)
+    return "نشست شما منقضی شده یا معتبر نیست. لطفاً دوباره وارد شوید.";
   if (!error.isAxiosError)
     return error.message || "خطایی رخ داد. دوباره تلاش کنید.";
   if (error.code === "ECONNABORTED")

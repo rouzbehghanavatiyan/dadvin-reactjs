@@ -35,6 +35,7 @@ import {
   beginVerifiedSession,
   getAccessToken,
   clearVerifiedSession,
+  subscribeSessionExpiration,
 } from "../src/utils/authSession";
 import { getErrorMessage } from "../src/masterService";
 import mainReducer, {
@@ -57,6 +58,77 @@ const fixture = {
   password: "must-not-send",
   terms: true,
 };
+
+test("global Axios sends the current token only to API requests, excludes OTP endpoints and stops after logout", async () => {
+  const previous = http.defaults.adapter;
+  const requests = [];
+  http.defaults.adapter = async (config) => {
+    requests.push(config);
+    return { status: 200, data: {}, headers: {}, config };
+  };
+  try {
+    beginVerifiedSession({ token: "session-one" }, "09123456789");
+    await http.get("/api/Users/createProfile");
+    assert.equal(requests.at(-1).headers.get("Authorization"), "Bearer session-one");
+    for (const path of ["login", "register", "verifyLoginCode", "verifySignUpCode"]) {
+      await http.post(`/api/Users/${path}`, {}, { headers: { Authorization: "Bearer must-remove" } });
+      assert.equal(requests.at(-1).headers.get("Authorization"), undefined);
+    }
+    await http.get("https://external.invalid/file");
+    assert.equal(requests.at(-1).headers.get("Authorization"), undefined);
+    const count = requests.length;
+    await assert.rejects(http.post("https://external.invalid/upload", {}, { authRequired: true }), /خارج/);
+    assert.equal(requests.length, count);
+    beginVerifiedSession({ token: "session-two" }, "09123456789");
+    await http.get("/api/Users/createProfile");
+    assert.equal(requests.at(-1).headers.get("Authorization"), "Bearer session-two");
+    clearVerifiedSession();
+    await http.get("/api/Users/createProfile");
+    assert.equal(requests.at(-1).headers.get("Authorization"), undefined);
+    await assert.rejects(http.post("/api/Users/createProfile", {}, { authRequired: true }), /وارد/);
+  } finally {
+    clearVerifiedSession();
+    http.defaults.adapter = previous;
+  }
+});
+
+test("401 expires only the matching active session; 403, failed OTP and stale 401 preserve it", async () => {
+  const previous = http.defaults.adapter;
+  let events = 0;
+  const unsubscribe = subscribeSessionExpiration(() => { events++; });
+  let status = 403;
+  http.defaults.adapter = async (config) => {
+    const error = new Error("fixture rejection");
+    error.isAxiosError = true;
+    error.config = config;
+    error.response = { status };
+    throw error;
+  };
+  try {
+    beginVerifiedSession({ token: "active-session" }, "09123456789");
+    await assert.rejects(http.get("/api/Users/createProfile"));
+    assert.equal(getAccessToken(), "active-session");
+    status = 401;
+    await assert.rejects(http.post("/api/Users/verifyLoginCode", {}));
+    assert.equal(getAccessToken(), "active-session");
+    await assert.rejects(http.get("/api/Users/createProfile", { headers: { Authorization: "Bearer old-session" } }));
+    assert.equal(getAccessToken(), "active-session");
+    assert.equal(events, 0);
+    await assert.rejects(http.get("/api/Users/createProfile"), (error) => {
+      assert.equal(error.sessionExpired, true);
+      assert.match(getErrorMessage(error), /نشست/);
+      return true;
+    });
+    assert.equal(getAccessToken(), null);
+    assert.equal(events, 1);
+    await assert.rejects(http.get("/api/Users/createProfile"));
+    assert.equal(events, 1);
+  } finally {
+    unsubscribe();
+    clearVerifiedSession();
+    http.defaults.adapter = previous;
+  }
+});
 
 test("real duplicate signup failure must not be mistaken for the outer success envelope", () => {
   const response = {
