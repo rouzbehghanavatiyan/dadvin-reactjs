@@ -1,18 +1,21 @@
 let accessToken = null;
 
-// Memory only. Call this only after a successful verifyLoginCode response.
 export function beginVerifiedSession(result, mobile) {
-  const account = result?.token ? result : result?.result;
-  const token = account?.token;
-  if (typeof token !== "string" || !token || /\s/.test(token))
-    throw new Error("سرور پس از تأیید کد، توکن معتبر نشست برنگرداند.");
-  if (account.mobile && account.mobile !== mobile)
-    throw new Error("شماره حساب تأییدشده با درخواست ورود مطابقت ندارد.");
-  accessToken = token;
+  const token = result?.token || result?.result?.token;
+  if (!token) throw new Error("توکن معتبر دریافت نشد.");
+  localStorage.setItem("authToken", token);
+  localStorage.setItem("userProfile", JSON.stringify(result));
+  localStorage.setItem("verifiedMobile", mobile);
 }
 
-export const getAccessToken = () => accessToken;
+export function getAccessToken() {
+  return localStorage.getItem("authToken");
+}
+
 export function clearVerifiedSession() {
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("userProfile");
+  localStorage.removeItem("verifiedMobile");
   accessToken = null;
 }
 

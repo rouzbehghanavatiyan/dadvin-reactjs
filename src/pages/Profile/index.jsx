@@ -69,6 +69,11 @@ export default function Profile() {
     setFeedback(null);
   }
   const summary = reviewed || values;
+  const userProfile = useSelector((state) => state.main);
+
+  console.log(userProfile);
+  
+
   return (
     <>
       <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
@@ -123,35 +128,26 @@ export default function Profile() {
               }}
             />
           </ProfileSection>
-          <ProfileSection
-            icon={UserRound}
-            title="اطلاعات هویتی و تماس"
-            description="نام، نام خانوادگی، موبایل، کد ملی و شهر الزامی هستند."
-          >
-            <IdentityFields register={register} errors={errors} />
-          </ProfileSection>
-          {values.role === "lawyer" && (
-            <>
-              <ProfileSection
-                icon={BriefcaseBusiness}
-                title="۶ سؤال اجباری وکیل"
-                description="علاوه بر اطلاعات هویتی، پاسخ به هر شش سؤال برای بررسی فرم لازم است."
-              >
-                <LawyerRequiredFields register={register} errors={errors} />
-              </ProfileSection>
-              <ProfileSection
-                icon={BriefcaseBusiness}
-                title="۶ سؤال اختیاری وکیل"
-                description="برای معرفی کامل‌تر سوابق و حیطه کاری خود پاسخ دهید."
-              >
-                <LawyerOptionalFields
-                  register={register}
-                  errors={errors}
-                  specialtyCount={values.specialties?.length || 0}
-                />
-              </ProfileSection>
-            </>
-          )}
+          <>
+            <ProfileSection
+              icon={BriefcaseBusiness}
+              title="۶ سؤال اجباری وکیل"
+              description="علاوه بر اطلاعات هویتی، پاسخ به هر شش سؤال برای بررسی فرم لازم است."
+            >
+              <LawyerRequiredFields register={register} errors={errors} />
+            </ProfileSection>
+            <ProfileSection
+              icon={BriefcaseBusiness}
+              title="۶ سؤال اختیاری وکیل"
+              description="برای معرفی کامل‌تر سوابق و حیطه کاری خود پاسخ دهید."
+            >
+              <LawyerOptionalFields
+                register={register}
+                errors={errors}
+                specialtyCount={values.specialties?.length || 0}
+              />
+            </ProfileSection>
+          </>
           {values.role !== "lawyer" && (
             <ProfileSection
               icon={FileText}

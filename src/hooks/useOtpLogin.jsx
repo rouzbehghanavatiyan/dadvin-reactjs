@@ -15,6 +15,7 @@ export default function useOtpLogin() {
   const [busy, setBusy] = useState(false);
   const activeRequest = useRef(null);
   const dispatch = useDispatch();
+
   useEffect(
     () => () => {
       activeRequest.current?.abort();
@@ -22,6 +23,7 @@ export default function useOtpLogin() {
     },
     [],
   );
+
   async function run(action) {
     if (activeRequest.current) return;
     const request = new AbortController();
@@ -31,13 +33,15 @@ export default function useOtpLogin() {
     try {
       await action(request.signal);
     } catch (error) {
-      if (!request.signal.aborted)
+      if (!request.signal.aborted) {
         setFeedback({
           kind: "error",
-          message: getErrorMessage(error),
+          message:
+            getErrorMessage(error) || error?.message || "خطایی رخ داده است.",
           requiresRegistration: error.requiresRegistration === true,
           registrationMobile: error.registrationMobile,
         });
+      }
     } finally {
       if (activeRequest.current === request) {
         activeRequest.current = null;
@@ -45,12 +49,14 @@ export default function useOtpLogin() {
       }
     }
   }
+
   function requestCode(values) {
     return run(async (signal) => {
       const payload = createLoginPayload(values);
       let result;
       try {
-        result = requireOtpDispatch(await login(payload, { signal }));
+        const response = await login(payload, { signal });
+        result = requireOtpDispatch(response);
       } catch (error) {
         if (error.requiresRegistration)
           error.registrationMobile = payload.mobile;
@@ -62,28 +68,53 @@ export default function useOtpLogin() {
       cooldown.start();
       setFeedback({
         kind: "success",
-        message: result.message || "کد تأیید ارسال شد.",
+        message: result?.message || "کد تأیید ارسال شد.",
       });
     });
   }
+
   function verifyCode({ code }) {
     return run(async (signal) => {
-      const result = await verifyLoginCode({ mobile, code }, { signal });
+      const response = await verifyLoginCode({ mobile, code }, { signal });
+
+      // بررسی اینکه آیا توکن برگشته است یا خیر
+      if (!response?.token) {
+        throw new Error(
+          response?.message || "خطا در تأیید کد یا عدم دریافت توکن.",
+        );
+      }
+        console.log("rrrrrrrrrrrrrr", response);
+
       if (!signal.aborted) {
-        beginVerifiedSession(result, mobile);
-        dispatch(setOtpSession(mobile));
+        beginVerifiedSession(response, mobile);
+        console.log("VVVVVVVVVVVVVVVVVVVv", response);
+
+        dispatch(
+          setOtpSession({
+            mobile: mobile || response.mobile,
+            user: response,
+          }),
+        );
+
+        setFeedback({
+          kind: "success",
+          message: response?.message || "ورود با موفقیت انجام شد.",
+        });
       }
     });
   }
+
   function editMobile() {
     if (activeRequest.current) return;
     setMobile(null);
     setFeedback(null);
   }
+
   function resendCode() {
     if (!mobile || !cooldown.canResend()) return;
     return requestCode({ mobile });
   }
+
   return {
     mobile,
     draftMobile,

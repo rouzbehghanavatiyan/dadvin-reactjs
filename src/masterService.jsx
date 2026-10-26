@@ -22,7 +22,6 @@ export function bearerOptions(token, options = {}) {
 
 export async function postMultipart(path, payload, options = {}) {
   const { data } = await http.post(path, payload, {
-    ...options,
     // Remove the shared JSON header; the browser must set the multipart boundary.
     headers: { ...options.headers, "Content-Type": undefined },
   });

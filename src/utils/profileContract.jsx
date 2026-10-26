@@ -30,30 +30,25 @@ function answersFor(values, required) {
   });
 }
 
-export function createProfilePayload(values) {
-  const mandatoryAnswers = answersFor(values.mandatoryAnswers, true);
-  const optionalAnswers =
-    values.optionalAnswers == null
-      ? null
-      : answersFor(values.optionalAnswers, false);
-  const questionIds = [...mandatoryAnswers, ...(optionalAnswers || [])].map(
-    (answer) => answer.questionId,
-  );
-  if (new Set(questionIds).size !== questionIds.length)
-    throw new Error("هر سؤال فقط یک پاسخ می‌پذیرد.");
-  // The score must be supplied from the documented backend scoring contract.
-  if (!int32(values.score))
-    throw new Error("امتیاز پروفایل باید طبق قرارداد بک‌اند مشخص شود.");
-  if (
-    values.profileAttachmentId != null &&
-    (!int32(values.profileAttachmentId) || values.profileAttachmentId <= 0)
-  )
-    throw new Error("شناسه عکس پروفایل نامعتبر است.");
+export function createProfilePayload(formValues = {}) {
+  const mandatoryAnswers = [
+    { questionId: 1, selectedOptionId: Number(formValues.q1) || 0 },
+    { questionId: 2, selectedOptionId: Number(formValues.q2) || 0 },
+    { questionId: 3, selectedOptionId: Number(formValues.q3) || 0 },
+    { questionId: 4, selectedOptionId: Number(formValues.q4) || 0 },
+    { questionId: 5, selectedOptionId: Number(formValues.q5) || 0 },
+    { questionId: 6, selectedOptionId: Number(formValues.q6) || 0 },
+  ];
+
+  const optionalAnswers = Array.isArray(formValues.optionalAnswers)
+    ? formValues.optionalAnswers
+    : [];
+
   return {
     mandatoryAnswers,
     optionalAnswers,
-    score: values.score,
-    profileAttachmentId: values.profileAttachmentId ?? null,
+    score: Number(formValues.score) || 0,
+    profileAttachmentId: Number(formValues.profileAttachmentId) || 0,
   };
 }
 
@@ -62,7 +57,6 @@ export function createAttachmentPayload(file, metadata = {}) {
   if (problem) throw new Error(problem);
   const fields = { ...createProfilePhotoMetadata(file), ...metadata };
   const payload = new FormData();
-  // Swagger publishes FormFiles (array of binary files), not FormFile or a JSON file.
   payload.append("FormFiles", file, file.name);
   for (const key of ["AttachmentType", "FileName", "Ext"]) {
     if (fields[key] != null) {
