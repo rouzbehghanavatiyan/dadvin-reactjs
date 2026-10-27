@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useSelector } from "react-redux";
 import {
-  UserRound,
   Camera,
   BriefcaseBusiness,
   FileText,
   Check,
   RotateCcw,
+  Loader2,
 } from "lucide-react";
 import Btn from "../../UI/Btn";
 import Alert from "../../UI/Alert";
@@ -20,10 +20,12 @@ import LawyerRequiredFields from "../../components/profile/LawyerRequiredFields"
 import ProfileSummary from "../../components/profile/ProfileSummary";
 import useProfilePhoto from "../../hooks/useProfilePhoto";
 import usePageTitle from "../../hooks/usePageTitle";
+import { saveProfile } from "../../services";
 
 export default function Profile() {
   usePageTitle("پروفایل من");
-  const selectedRole = useSelector((state) => state.main.selectedRole);
+  const selectedRole = useSelector((state) => state.main?.selectedRole);
+
   const defaults = {
     name: "",
     lastName: "",
@@ -45,6 +47,7 @@ export default function Profile() {
     specialties: [],
     bio: "",
   };
+
   const {
     register,
     handleSubmit,
@@ -52,55 +55,79 @@ export default function Profile() {
     reset,
     formState: { errors },
   } = useForm({ defaultValues: defaults, shouldUnregister: true });
+
   const values = watch();
   const photo = useProfilePhoto();
+
   const [reviewed, setReviewed] = useState(null);
   const [feedback, setFeedback] = useState(null);
-  function preview(data) {
-    setReviewed({ ...data });
-    setFeedback(
-      "اطلاعات فرم بررسی شد و پیش‌نمایش به‌روز است. این اطلاعات هنوز روی سرور ذخیره نشده‌اند.",
-    );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function onSubmit(data) {
+    setIsSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const rawFile = photo.photo?.file;
+
+      const response = await saveProfile(data, {
+        photo: rawFile,
+        attachmentMetadata: { AttachmentType: "profile" },
+      });
+
+      const isFailed =
+        response?.success === false ||
+        response?.isSuccess === false ||
+        (response?.code !== undefined &&
+          response?.code !== 0 &&
+          response?.code !== 200);
+
+      if (isFailed) {
+        setFeedback({
+          type: "error",
+          message:
+            response?.message || "گزینه‌های اجباری انتخاب‌شده نامعتبر است.",
+        });
+        return;
+      }
+
+      setReviewed({ ...data });
+      setFeedback({
+        type: "success",
+        message:
+          response?.message || "تصویر و اطلاعات پروفایل با موفقیت ثبت شدند.",
+      });
+    } catch (err) {
+      const serverMessage =
+        err?.response?.data?.message ||
+        err?.data?.message ||
+        err?.message ||
+        "خطایی در ذخیره اطلاعات رخ داد.";
+
+      setFeedback({
+        type: "error",
+        message: serverMessage,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
+
   function clear() {
     reset(defaults);
     photo.remove();
     setReviewed(null);
     setFeedback(null);
   }
-  const summary = reviewed || values;
-  const userProfile = useSelector((state) => state.main);
 
-  console.log(userProfile);
-  
+  const summary = reviewed || values;
 
   return (
     <>
-      <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="mb-2 text-xs text-muted">حساب کاربری / پروفایل من</p>
-          <h1 className="text-2xl font-bold text-ink">
-            پروفایل خود را تکمیل کنید
-          </h1>
-          <p className="mt-3 text-xs leading-7 text-muted">
-            اطلاعات شما، اولین قدم برای یک ارتباط حرفه‌ای و مطمئن است.
-          </p>
-        </div>
-        <span className="rounded-full border border-line bg-white px-4 py-2 text-[11px] text-muted">
-          پیش‌نمایش · در انتظار قرارداد سؤال‌ها
-        </span>
-      </div>
-      <div className="mb-7">
-        <Alert kind="info">
-          این فرم فعلاً برای آماده‌سازی پروفایل است. سؤال‌ها پیشنهادی‌اند؛ ذخیره
-          پس از دریافت فهرست رسمی سؤال‌ها و گزینه‌های سرور فعال می‌شود. اطلاعات
-          و عکس فقط در حافظه همین صفحه هستند و با بازخوانی صفحه پاک می‌شوند.
-        </Alert>
-      </div>
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_300px]">
         <form
           noValidate
-          onSubmit={handleSubmit(preview)}
+          onSubmit={handleSubmit(onSubmit)}
           onChange={() => {
             setReviewed(null);
             setFeedback(null);
@@ -115,7 +142,7 @@ export default function Profile() {
             <ProfilePhoto
               photo={photo.photo}
               error={photo.error}
-              busy={photo.busy}
+              busy={photo.busy || isSubmitting}
               onChoose={(file) => {
                 photo.choose(file);
                 setFeedback(null);
@@ -128,6 +155,7 @@ export default function Profile() {
               }}
             />
           </ProfileSection>
+
           <>
             <ProfileSection
               icon={BriefcaseBusiness}
@@ -148,44 +176,42 @@ export default function Profile() {
               />
             </ProfileSection>
           </>
-          {values.role !== "lawyer" && (
-            <ProfileSection
-              icon={FileText}
-              title="درباره من"
-              description="معرفی کوتاه خود را بنویسید؛ اطلاعات تماس را در این بخش قرار ندهید."
-            >
-              <TextArea
-                label="معرفی کوتاه (اختیاری)"
-                placeholder="درباره زمینه فعالیت و تجربه خود بنویسید…"
-                hint="حداکثر ۱۰۰۰ نویسه"
-                maxLength={1000}
-                {...register("bio", {
-                  maxLength: {
-                    value: 1000,
-                    message: "معرفی نباید بیشتر از ۱۰۰۰ نویسه باشد.",
-                  },
-                })}
-                error={errors.bio?.message}
-              />
-            </ProfileSection>
+
+          {feedback && (
+            <Alert kind={feedback.type === "success" ? "success" : "error"}>
+              {feedback.message}
+            </Alert>
           )}
-          {feedback && <Alert kind="info">{feedback}</Alert>}
+
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-5">
             <p className="text-[11px] text-muted">
-              ذخیره پس از تطبیق سؤال‌ها با سرور فعال می‌شود.
+              پس از تایید، تصویر آپلود شده و پروفایل شما ثبت نهایی می‌شود.
             </p>
             <div className="flex gap-2">
-              <Btn variant="ghost" onClick={clear}>
+              <Btn variant="ghost" onClick={clear} disabled={isSubmitting}>
                 <RotateCcw size={15} />
                 پاک‌کردن فرم
               </Btn>
-              <Btn type="submit" disabled={photo.busy || Boolean(photo.error)}>
-                <Check size={16} />
-                بررسی و پیش‌نمایش
+              <Btn
+                type="submit"
+                disabled={photo.busy || Boolean(photo.error) || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    در حال ذخیره...
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    ثبت و ذخیره پروفایل
+                  </>
+                )}
               </Btn>
             </div>
           </div>
         </form>
+
         <ProfileSummary
           values={summary}
           photo={photo.photo}

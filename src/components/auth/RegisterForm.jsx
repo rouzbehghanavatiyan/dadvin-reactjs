@@ -39,10 +39,12 @@ export default function RegisterForm() {
   });
   const role = watch("role");
   const flow = useRegistration();
+ 
   const onSubmit = (values) => {
     dispatch(setSelectedRole(values.role));
     return flow.requestCode(values);
   };
+ 
   if (flow.step === "otp")
     return (
       <OtpForm

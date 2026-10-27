@@ -8,11 +8,11 @@ export default function Panel() {
   const mobile = useSelector((state) => state.main.verifiedMobile);
   return (
     <div className="space-y-7">
-      <div>
+      {/* <div>
         <p className="mb-2 text-xs text-muted">حساب کاربری / پنل من</p>
         <h1 className="text-2xl font-bold text-ink">به پنل دادوین خوش آمدید</h1>
-      </div>
-      <section className="rounded-2xl border border-line bg-white p-6 sm:p-9">
+      </div> */}
+      {/* <section className="rounded-2xl border border-line bg-white p-6 sm:p-9">
         <div className="flex items-center gap-3">
           <BadgeCheck className="text-emerald-600" size={28} />
           <h2 className="font-medium text-ink">شماره موبایل شما تأیید شد</h2>
@@ -20,7 +20,7 @@ export default function Panel() {
         <p className="mt-4 text-sm leading-8 text-muted">
           ورود با شماره <bdi>{mobile}</bdi> انجام شد.
         </p>
-      </section>
+      </section> */}
       <section className="rounded-2xl border border-line bg-white p-6 sm:p-9">
         <UserRound size={26} className="mb-4 text-navy" />
         <h2 className="text-lg font-medium text-ink">

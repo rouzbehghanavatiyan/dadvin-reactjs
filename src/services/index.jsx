@@ -43,47 +43,88 @@ export const verifyRegistrationCode = async (values, options) =>
   );
 
 export const createProfile = async (
-  values,
+  payload,
   token = getAccessToken(),
-  options,
+  options = {},
 ) => {
-  const payload = createProfilePayload(values);
-  return readAuthResult(
-    await postAuth(
-      "/api/Users/createProfile",
-      payload,
-      bearerOptions(token, options),
-    ),
+  const response = await post(
+    "/api/Profile/createProfile", // یا روت مدنظر پروژه
+    payload,
+    bearerOptions(token, options),
   );
+
+  const data = response?.data ?? response;
+
+  // بررسی شرایط خطا بر اساس ساختار پاسخ بک‌اند:
+  // اگر code صفر نبود یا success فالس بود یا اروری وجود داشت
+  const isFailed =
+    data?.code !== 0 || data?.success === false || data?.isSuccess === false;
+
+  if (isFailed) {
+    // دریافت متن خطا مستقیماً از کلید message سرور
+    const errorMessage =
+      data?.message ||
+      data?.errors?.[0] ||
+      data?.title ||
+      "خطایی در ثبت پروفایل رخ داد.";
+
+    throw new Error(errorMessage);
+  }
+
+  return data;
 };
 
 export const createAttachment = async (
-  file,
+  files,
   metadata = {},
   token = getAccessToken(),
   options = {},
 ) => {
   const formData = new FormData();
-  formData.append("formFile", file);
-  Object.entries(metadata).forEach(([key, value]) => {
-    formData.append(key, value);
+
+  const fileList = Array.isArray(files) ? files : [files];
+  fileList.forEach((file) => {
+    formData.append("FormFiles", file);
   });
 
-  return readAuthResult(
-    await postMultipart(
-      "/api/Attachment/createAttachment",
-      formData,
-      bearerOptions(token, options),
-    ),
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      formData.append(key, value);
+    }
+  });
+
+  // حذف readAuthResult و بازگرداندن مستقیم نتیجه postMultipart
+  const response = await postMultipart(
+    "/api/Attachment/createAttachment",
+    formData,
+    bearerOptions(token, options),
   );
+
+  // معمولاً پاسخ یا در response.data است یا اگر masterService دیتا را آنپک کرده خود response است
+  return response?.data ?? response;
+};
+
+const extractAttachmentId = (res) => {
+  const items = res?.result ?? res?.data?.result ?? res?.data ?? res;
+  if (Array.isArray(items) && items.length > 0) {
+    return items[0]?.attachmentId ?? items[0]?.AttachmentId ?? items[0]?.id;
+  }
+  return items?.attachmentId ?? items?.AttachmentId ?? items?.id;
+};
+
+const defaultReadAttachmentId = (res) => {
+  const items = res?.data ?? res?.result ?? res;
+  if (Array.isArray(items) && items.length > 0) {
+    return items[0]?.AttachmentId ?? items[0]?.id;
+  }
+  return items?.AttachmentId ?? items?.id;
 };
 
 export async function saveProfile(
   values,
   {
     photo = null,
-    attachmentMetadata = {},
-    readAttachmentId = (res) => res?.data?.id ?? res?.id,
+    attachmentMetadata = { AttachmentType: "profile" },
     token = getAccessToken(),
     signal,
   } = {},
@@ -91,29 +132,28 @@ export async function saveProfile(
   let attachmentId = 0;
 
   if (photo) {
-    createAttachmentPayload(photo, attachmentMetadata);
-
     const uploadRes = await createAttachment(photo, attachmentMetadata, token, {
       signal,
     });
 
-    attachmentId = readAttachmentId(uploadRes);
-
-    if (
-      !Number.isInteger(Number(attachmentId)) ||
-      Number(attachmentId) <= 0 ||
-      Number(attachmentId) > 2147483647
-    ) {
-      throw new Error("سرور شناسه معتبر عکس برنگرداند؛ پروفایل ذخیره نشد.");
+    const items = uploadRes?.result ?? uploadRes?.data?.result ?? uploadRes;
+    if (Array.isArray(items) && items.length > 0) {
+      attachmentId = items[0]?.attachmentId ?? items[0]?.id;
+    } else {
+      attachmentId = items?.attachmentId ?? items?.id;
     }
   }
 
-  if (signal?.aborted) throw new Error("عملیات ذخیره لغو شد.");
-
   const payload = createProfilePayload({
     ...values,
-    profileAttachmentId: Number(attachmentId),
+    profileAttachmentId: Number(attachmentId) || 0,
   });
 
-  return createProfile(payload, token, { signal });
+  const profileRes = await createProfile(payload, token, { signal });
+
+  if (profileRes?.success === false || profileRes?.isSuccess === false) {
+    throw new Error(profileRes?.message || "اطلاعات ارسالی نامعتبر است.");
+  }
+
+  return profileRes;
 }

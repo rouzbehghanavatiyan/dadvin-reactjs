@@ -65,7 +65,6 @@ export default function ProfilePhoto({
         <p id={`${id}-help`} className="mt-3 text-[11px] leading-6 text-muted">
           JPG، PNG یا WebP · حداکثر ۵ مگابایت
           <br />
-          عکس فعلاً فقط روی همین صفحه پیش‌نمایش می‌شود.
         </p>
         {error && (
           <p role="alert" className="mt-2 text-xs text-red-700">
