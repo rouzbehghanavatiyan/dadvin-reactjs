@@ -5,10 +5,10 @@
 
 These requirements come from the project owner and apply to subsequent development.
 
-- Use React, Vite, Tailwind CSS and JSX. Do not introduce TypeScript or MUI.
-- Preserve the nova template's folder organization: `src/UI`, `components`, `hooks/slices`, `hooks/store`, `layouts`, `pages`, `routes`, `services`, `utils`, plus `src/masterService.jsx` and `public/assets`.
-- All API calls use the shared Axios instance in `src/utils/axios.jsx`; business endpoints belong in `src/services/index.jsx`, shared transport handling in `src/masterService.jsx`.
-- Keep components small and reusable. Use `src/UI/Btn.jsx` for every native button, and shared input and feedback primitives.
+- Use React, Vite, Tailwind CSS and TypeScript (`.ts` / `.tsx`). Do not introduce MUI or convert files back to JavaScript.
+- Preserve the nova template's folder organization: `src/UI`, `components`, `hooks/slices`, `hooks/store`, `layouts`, `pages`, `routes`, `services`, `utils`, plus `src/services/masterService.tsx` and `public/assets`.
+- All API calls use the shared Axios instance in `src/utils/axios.tsx`; business endpoints belong in `src/services/index.tsx`, shared transport handling in `src/services/masterService.tsx`.
+- Keep components small and reusable. Use `src/UI/Btn.tsx` for every native button, and shared input and feedback primitives.
 - Persian is the default language; support RTL, keyboard navigation and responsive mobile layouts.
 - National code is required in registration and profile forms. Never label it optional; normalize digits and reject an empty or non-10-digit value before registration requests.
 - Login is phone-only OTP: mobile number → SMS code → panel after server-confirmed verification. Do not add email/password login, password recovery, remember-me, Google or LinkedIn login.

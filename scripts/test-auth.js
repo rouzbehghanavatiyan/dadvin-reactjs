@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 
 await mkdir(".qa", { recursive: true });
 await build({
-  entryPoints: ["tests/auth-contract.test.jsx"],
+  entryPoints: ["tests/auth-contract.test.tsx"],
   outfile: ".qa/auth-contract.test.mjs",
   bundle: true,
   platform: "node",
