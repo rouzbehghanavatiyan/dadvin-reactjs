@@ -5,26 +5,31 @@ import type { ProfilePhotoSelection } from "../../types/domain";
 
 export default function ProfilePhoto({
   photo,
+  savedUrl,
   error,
   busy,
+  locked = false,
   onChoose,
   onRemove,
 }: {
   photo: ProfilePhotoSelection | null;
+  savedUrl?: string | null;
   error?: string;
   busy: boolean;
+  locked?: boolean;
   onChoose: (file?: File) => void;
   onRemove: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const id = useId();
+  const preview = photo?.url || savedUrl || "";
   return (
     <div className="flex flex-col items-center gap-5 sm:flex-row">
       <div className="relative">
         <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[#eaf0f6] text-muted shadow-sm">
-          {photo ? (
+          {preview ? (
             <img
-              src={photo.url}
+              src={preview}
               alt="پیش‌نمایش عکس پروفایل"
               className="h-full w-full object-cover"
             />
@@ -41,11 +46,12 @@ export default function ProfilePhoto({
           <Btn
             variant="outline"
             loading={busy}
+            disabled={locked}
             onClick={() => input.current?.click()}
             aria-describedby={`${id}-help`}
           >
             <Upload size={16} />
-            {photo ? "تغییر عکس" : "انتخاب عکس"}
+            {preview ? "تغییر عکس" : "انتخاب عکس"}
           </Btn>
           {(photo || error || busy) && (
             <Btn
@@ -63,6 +69,7 @@ export default function ProfilePhoto({
           type="file"
           accept="image/jpeg,image/png,image/webp"
           className="sr-only"
+          disabled={locked}
           aria-label="انتخاب فایل عکس پروفایل"
           onChange={(event) => {
             onChoose(event.target.files?.[0]);

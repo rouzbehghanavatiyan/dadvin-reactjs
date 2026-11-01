@@ -1,14 +1,27 @@
 export type UserProfile = {
+  id?: number;
   firstName?: string;
   lastName?: string;
+  nationalCode?: string;
   mobile?: string;
+  email?: string;
+  registrationPermit?: string;
   token?: string;
   message?: string;
+  score?: number;
+  profileAttachmentId?: number;
   photoLocation?: string;
   profileAttachment?: {
+    id?: number;
+    fileName?: string;
+    ext?: string;
+    attachmentType?: string;
+    userId?: number;
     location?: string;
     path?: string;
   } | null;
+  mandatoryAnswers?: unknown[];
+  optionalAnswers?: unknown[];
   [key: string]: unknown;
 };
 

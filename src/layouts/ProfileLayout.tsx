@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../hooks/store/store";
-import { UserRound, ArrowRight, LogOut, FileText } from "lucide-react";
+import { UserRound, ArrowRight, LogOut, FileText, MessageCircle } from "lucide-react";
 import Brand from "../UI/Brand";
 import Btn from "../UI/Btn";
 import {
@@ -11,6 +11,8 @@ import {
 } from "../hooks/slices/mainReducer";
 import { clearVerifiedSession, getAccessToken } from "../utils/authSession";
 import { getUserProfile } from "../services";
+import { isClientAccount } from "../utils/clientAccount";
+import NotificationBell from "../components/notifications/NotificationBell";
 
 // خواندن آدرس پایه از متغیر محیطی یا مقدار پیش‌فرض سرور
 const BASE_URL = (
@@ -26,6 +28,8 @@ export default function ProfileLayout() {
 
   const [imageError, setImageError] = useState(false);
   const isRequestsActive = location.pathname.startsWith("/requests");
+  const isChatActive = location.pathname.startsWith("/chat");
+  const isClient = isClientAccount(userProfile);
 
   const photoPath =
     userProfile?.photoLocation ||
@@ -86,26 +90,35 @@ export default function ProfileLayout() {
           <div className="flex items-center gap-4 text-xs">
             {verifiedMobile ? (
               <>
-                <Link
-                  to="/requests"
-                  className={`flex items-center gap-1.5 text-navy transition-colors hover:text-primary ${
-                    isRequestsActive ? "font-bold underline" : ""
-                  }`}
-                >
-                  <FileText size={16} />
-                  <span>درخواست‌ها</span>
-                </Link>
+                {isClient && <NotificationBell />}
+                {/* {isClient && (
+                  <Link
+                    to="/chat"
+                    className={`flex items-center gap-1.5 text-navy transition-colors hover:text-primary ${isChatActive ? "font-bold underline" : ""
+                      }`}
+                  >
+                    <MessageCircle size={16} />
+                    <span>گفتگو</span>
+                  </Link>
+                )} */}
+                {isClient && (
+                  <Link
+                    to="/requests"
+                    className={`flex items-center gap-1.5 text-navy transition-colors hover:text-primary ${isRequestsActive ? "font-bold underline" : ""
+                      }`}
+                  >
+                    <FileText size={16} />
+                    <span>درخواست‌ها</span>
+                  </Link>
+                )}
 
-                {/* دکمه پروفایل به همراه آواتار */}
                 <Link
                   to="/panel"
-                  className={`flex items-center gap-2.5 rounded-full py-1 pr-1.5 pl-3 transition-colors hover:bg-slate-100 ${
-                    location.pathname === "/panel"
-                      ? "bg-slate-100 font-bold"
-                      : "text-navy"
-                  }`}
+                  className={`flex items-center gap-2.5 rounded-full py-1 pr-1.5 pl-3 transition-colors hover:bg-slate-100 ${location.pathname === "/panel"
+                    ? "bg-slate-100 font-bold"
+                    : "text-navy"
+                    }`}
                 >
-                  {/* دایره آواتار */}
                   <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-500 shadow-xs">
                     {avatarSrc && !imageError ? (
                       <img

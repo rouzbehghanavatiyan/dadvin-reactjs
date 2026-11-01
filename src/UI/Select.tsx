@@ -19,7 +19,7 @@ export default function Select({ label, error, children, ...props }: SelectProps
         id={id}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
-        className="w-full rounded-xl border border-line bg-white px-4 py-3.5 text-sm text-ink outline-none focus:border-navy focus:ring-3 focus:ring-navy/8"
+        className="w-full rounded-xl border border-line bg-white px-4 py-3.5 text-sm text-ink outline-none focus:border-navy focus:ring-3 focus:ring-navy/8 disabled:cursor-not-allowed disabled:bg-[#f4f7fb] disabled:text-muted"
         {...props}
       >
         {children}

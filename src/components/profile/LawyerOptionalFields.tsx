@@ -3,6 +3,7 @@ import Input from "../../UI/Input";
 import Select from "../../UI/Select";
 import TextArea from "../../UI/TextArea";
 import type { ProfileFormValues } from "../../types/domain";
+import type { LockedProfileFields } from "./LawyerRequiredFields";
 import { normalizeDigits } from "../../utils/StringHelper";
 
 const textRules = (max: number) => ({
@@ -22,15 +23,18 @@ const countRules = (maxDigits: number) => ({
 export default function LawyerOptionalFields({
   register,
   errors,
+  locked = {},
 }: {
   register: UseFormRegister<ProfileFormValues>;
   errors: FieldErrors<ProfileFormValues>;
+  locked?: LockedProfileFields;
 }) {
   return (
     <div className="grid gap-5 sm:grid-cols-2">
       <Select
         label="۱. پایه علمی"
         {...register("education")}
+        disabled={locked.education}
         error={errors.education?.message}
       >
         <option value="">انتخاب کنید</option>
@@ -41,23 +45,27 @@ export default function LawyerOptionalFields({
       <Input
         label="۲. رشته تحصیلات تکمیلی"
         {...register("graduateField", textRules(120))}
+        disabled={locked.graduateField}
         error={errors.graduateField?.message}
       />
       <Input
         label="۳. سنوات فعالیت"
         inputMode="numeric"
         {...register("experienceYears", countRules(2))}
+        disabled={locked.experienceYears}
         error={errors.experienceYears?.message}
       />
       <Input
         label="۴. آمار CMS"
         {...register("cmsStats", textRules(120))}
+        disabled={locked.cmsStats}
         error={errors.cmsStats?.message}
       />
       <Input
         label="۵. تعداد پرونده‌های موفق"
         inputMode="numeric"
         {...register("successfulCases", countRules(6))}
+        disabled={locked.successfulCases}
         error={errors.successfulCases?.message}
       />
       <div className="sm:col-span-2">
@@ -65,6 +73,7 @@ export default function LawyerOptionalFields({
           label="۶. نمونه آرا"
           rows={4}
           {...register("sampleVerdicts", textRules(2000))}
+          disabled={locked.sampleVerdicts}
           error={errors.sampleVerdicts?.message}
         />
       </div>

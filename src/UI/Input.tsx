@@ -17,6 +17,7 @@ export default function Input({
   hint,
   className = "",
   id: providedId,
+  disabled,
   ...props
 }: InputProps) {
   const generatedId = useId();
@@ -30,7 +31,7 @@ export default function Input({
         {label}
       </label>
       <div
-        className={`relative flex items-center rounded-xl border bg-white transition focus-within:border-navy focus-within:ring-3 focus-within:ring-navy/8 ${error ? "border-red-400" : "border-line"}`}
+        className={`relative flex items-center rounded-xl border transition focus-within:border-navy focus-within:ring-3 focus-within:ring-navy/8 ${disabled ? "bg-[#f4f7fb]" : "bg-white"} ${error ? "border-red-400" : "border-line"}`}
       >
         {Icon && (
           <Icon
@@ -43,7 +44,8 @@ export default function Input({
           id={id}
           aria-invalid={Boolean(error)}
           aria-describedby={error || hint ? `${id}-help` : undefined}
-          className={`min-w-0 w-full rounded-lg bg-transparent py-3.5 text-sm text-ink outline-none placeholder:text-[#8b9bb2] ${Icon ? "pl-12" : "pl-4"} ${endAdornment ? "pr-12" : "pr-4"}`}
+          disabled={disabled}
+          className={`min-w-0 w-full rounded-lg bg-transparent py-3.5 text-sm text-ink outline-none placeholder:text-[#8b9bb2] disabled:cursor-not-allowed disabled:text-muted ${Icon ? "pl-12" : "pl-4"} ${endAdornment ? "pr-12" : "pr-4"}`}
           {...props}
         />
         {endAdornment && <div className="absolute right-1">{endAdornment}</div>}

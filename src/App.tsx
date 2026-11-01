@@ -8,6 +8,9 @@ import ProfileLayout from "./layouts/ProfileLayout";
 import RequireOtpSession from "./routes/RequireOtpSession";
 import Panel from "./pages/Dashboard";
 import RequestsPage from "./pages/Requests/page";
+import ReceiptsPage from "./pages/Receipts/page";
+import ChatPage from "./pages/Chat/page";
+import ChatRoomPage from "./pages/Chat/room";
 
 export default function App() {
   return (
@@ -17,6 +20,9 @@ export default function App() {
           <Route element={<RequireOtpSession />}>
             <Route path="panel" element={<Panel />} />
             <Route path="requests" element={<RequestsPage />} />
+            <Route path="receipts" element={<ReceiptsPage />} />
+            <Route path="chat" element={<ChatPage />} />
+            <Route path="chat/:lawyerId" element={<ChatRoomPage />} />
           </Route>
           <Route path="profile" element={<Profile />} />
         </Route>

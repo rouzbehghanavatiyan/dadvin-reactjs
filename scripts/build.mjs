@@ -20,6 +20,7 @@ try {
 } catch {
   // Builds from a source archive may not have Git metadata; never invent a SHA.
 }
+process.env.VITE_URL = "http://171.22.25.222:9090/";
 await build({ root });
 await writeFile(
   resolve(root, "dist/version.json"),
