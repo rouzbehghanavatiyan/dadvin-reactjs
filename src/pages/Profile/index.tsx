@@ -36,15 +36,14 @@ export default function Profile() {
     city: "",
     role: selectedRole === "lawyer" ? "lawyer" : "client",
     registrationPermit: "",
-    experienceYears: "",
+    membership: "",
+    employmentStatus: "",
     education: "",
-    issuingAuthority: "",
-    licenseGrade: "",
-    primaryPractice: "",
-    serviceMode: "",
-    workHistory: "",
-    languages: "",
-    officeAddress: "",
+    graduateField: "",
+    experienceYears: "",
+    cmsStats: "",
+    successfulCases: "",
+    sampleVerdicts: "",
     specialties: [],
     bio: "",
   };
@@ -167,21 +166,17 @@ export default function Profile() {
           <>
             <ProfileSection
               icon={BriefcaseBusiness}
-              title="۶ سؤال اجباری وکیل"
-              description="علاوه بر اطلاعات هویتی، پاسخ به هر شش سؤال برای بررسی فرم لازم است."
+              title="گزینه‌های ضروری"
+              description="تکمیل نام، تماس، ایمیل، عضویت، شماره پروانه و وضعیت اشتغال لازم است."
             >
               <LawyerRequiredFields register={register} errors={errors} />
             </ProfileSection>
             <ProfileSection
               icon={BriefcaseBusiness}
-              title="۶ سؤال اختیاری وکیل"
-              description="برای معرفی کامل‌تر سوابق و حیطه کاری خود پاسخ دهید."
+              title="گزینه‌های اختیاری"
+              description="پایه علمی، رشته، سنوات، آمار و نمونه آرا را در صورت تمایل وارد کنید."
             >
-              <LawyerOptionalFields
-                register={register}
-                errors={errors}
-                specialtyCount={values.specialties?.length || 0}
-              />
+              <LawyerOptionalFields register={register} errors={errors} />
             </ProfileSection>
           </>
 

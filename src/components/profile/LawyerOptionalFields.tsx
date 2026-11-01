@@ -1,74 +1,73 @@
+import type { FieldErrors, UseFormRegister } from "react-hook-form";
 import Input from "../../UI/Input";
 import Select from "../../UI/Select";
 import TextArea from "../../UI/TextArea";
-import SpecialtySelector from "./SpecialtySelector";
-import type { FieldErrors, UseFormRegister } from "react-hook-form";
 import type { ProfileFormValues } from "../../types/domain";
+import { normalizeDigits } from "../../utils/StringHelper";
 
 const textRules = (max: number) => ({
   setValueAs: (value: string) => value.trim(),
-  maxLength: { value: max, message: `حداکثر ${max} نویسه وارد کنید.` },
+  validate: (value: string) =>
+    !value || value.length <= max || `حداکثر ${max} حرف مجاز است.`,
+});
+
+const countRules = (maxDigits: number) => ({
+  setValueAs: (value: string) => normalizeDigits(value).trim(),
+  validate: (value: string) =>
+    !value ||
+    new RegExp(`^\\d{1,${maxDigits}}$`).test(value) ||
+    "فقط عدد وارد کنید.",
 });
 
 export default function LawyerOptionalFields({
   register,
   errors,
-  specialtyCount,
 }: {
   register: UseFormRegister<ProfileFormValues>;
   errors: FieldErrors<ProfileFormValues>;
-  specialtyCount: number;
 }) {
   return (
-    <div className="space-y-6">
-      <p className="text-xs leading-7 text-muted">
-        می‌توانید همه این سؤال‌ها را خالی بگذارید. در سوابق، نام موکل یا اطلاعات
-        محرمانه پرونده‌ها را ننویسید.
-      </p>
+    <div className="grid gap-5 sm:grid-cols-2">
       <Select
-        label="۱. بالاترین مقطع تحصیلی شما چیست؟ (اختیاری)"
+        label="۱. پایه علمی"
         {...register("education")}
         error={errors.education?.message}
       >
         <option value="">انتخاب کنید</option>
         <option value="bachelor">کارشناسی</option>
         <option value="master">کارشناسی ارشد</option>
-        <option value="doctorate">دکتری</option>
-        <option value="other">سایر</option>
+        <option value="doctorate">دکترا</option>
       </Select>
-      <SpecialtySelector
-        label="۲. در چه حوزه‌های دیگری فعالیت دارید؟ (اختیاری)"
-        register={register}
-        count={specialtyCount}
-        error={errors.specialties?.message}
-      />
-      <TextArea
-        label="۳. مهم‌ترین سوابق حرفه‌ای شما چیست؟ (اختیاری)"
-        hint="تا ۱۰۰۰ نویسه؛ مانند همکاری‌های حرفه‌ای، تدریس یا پژوهش"
-        maxLength={1000}
-        {...register("workHistory", textRules(1000))}
-        error={errors.workHistory?.message}
+      <Input
+        label="۲. رشته تحصیلات تکمیلی"
+        {...register("graduateField", textRules(120))}
+        error={errors.graduateField?.message}
       />
       <Input
-        label="۴. به چه زبان‌هایی خدمات ارائه می‌کنید؟ (اختیاری)"
-        placeholder="مثلاً فارسی، انگلیسی و عربی"
-        maxLength={150}
-        {...register("languages", textRules(150))}
-        error={errors.languages?.message}
+        label="۳. سنوات فعالیت"
+        inputMode="numeric"
+        {...register("experienceYears", countRules(2))}
+        error={errors.experienceYears?.message}
       />
-      <TextArea
-        label="۵. نشانی دفتر یا محل ملاقات حرفه‌ای شما کجاست؟ (اختیاری)"
-        maxLength={500}
-        {...register("officeAddress", textRules(500))}
-        error={errors.officeAddress?.message}
+      <Input
+        label="۴. آمار CMS"
+        {...register("cmsStats", textRules(120))}
+        error={errors.cmsStats?.message}
       />
-      <TextArea
-        label="۶. رویکرد کاری خود را چطور معرفی می‌کنید؟ (اختیاری)"
-        hint="حداکثر ۱۰۰۰ نویسه؛ این متن در پیش‌نمایش معرفی شما نمایش داده می‌شود."
-        maxLength={1000}
-        {...register("bio", textRules(1000))}
-        error={errors.bio?.message}
+      <Input
+        label="۵. تعداد پرونده‌های موفق"
+        inputMode="numeric"
+        {...register("successfulCases", countRules(6))}
+        error={errors.successfulCases?.message}
       />
+      <div className="sm:col-span-2">
+        <TextArea
+          label="۶. نمونه آرا"
+          rows={4}
+          {...register("sampleVerdicts", textRules(2000))}
+          error={errors.sampleVerdicts?.message}
+        />
+      </div>
     </div>
   );
 }
