@@ -11,6 +11,8 @@ import RequestsPage from "./pages/Requests/page";
 import ReceiptsPage from "./pages/Receipts/page";
 import ChatPage from "./pages/Chat/page";
 import ChatRoomPage from "./pages/Chat/room";
+import ChannelsPage from "./pages/Channels/page";
+import ChannelRoomPage from "./pages/Channels/room";
 
 export default function App() {
   return (
@@ -23,6 +25,8 @@ export default function App() {
             <Route path="receipts" element={<ReceiptsPage />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="chat/:lawyerId" element={<ChatRoomPage />} />
+            <Route path="channels" element={<ChannelsPage />} />
+            <Route path="channels/:channel/:roomId" element={<ChannelRoomPage />} />
           </Route>
           <Route path="profile" element={<Profile />} />
         </Route>

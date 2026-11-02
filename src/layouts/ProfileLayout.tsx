@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../hooks/store/store";
-import { UserRound, ArrowRight, LogOut, FileText, MessageCircle } from "lucide-react";
+import { UserRound, ArrowRight, LogOut, FileText, MessageCircle, Layers } from "lucide-react";
 import Brand from "../UI/Brand";
 import Btn from "../UI/Btn";
 import {
@@ -11,10 +11,9 @@ import {
 } from "../hooks/slices/mainReducer";
 import { clearVerifiedSession, getAccessToken } from "../utils/authSession";
 import { getUserProfile } from "../services";
-import { isClientAccount } from "../utils/clientAccount";
+import { isClientAccount, isLawyerAccount } from "../utils/clientAccount";
 import NotificationBell from "../components/notifications/NotificationBell";
 
-// خواندن آدرس پایه از متغیر محیطی یا مقدار پیش‌فرض سرور
 const BASE_URL = (
   import.meta.env?.VITE_URL || "http://171.22.25.222:9090/"
 ).replace(/\/+$/, "");
@@ -29,7 +28,9 @@ export default function ProfileLayout() {
   const [imageError, setImageError] = useState(false);
   const isRequestsActive = location.pathname.startsWith("/requests");
   const isChatActive = location.pathname.startsWith("/chat");
+  const isChannelsActive = location.pathname.startsWith("/channels");
   const isClient = isClientAccount(userProfile);
+  const isLawyer = isLawyerAccount(userProfile);
 
   const photoPath =
     userProfile?.photoLocation ||
@@ -80,9 +81,9 @@ export default function ProfileLayout() {
     : "پنل کاربری";
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f1f5f9]">
-      <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-3.5 sm:px-8">
+    <div className="flex h-full flex-col overflow-hidden bg-[#f1f5f9]">
+      <header className="shrink-0 border-b border-line bg-white">
+        <div className="mx-auto flex max-w-[1680px] items-center justify-between px-5 py-3.5 sm:px-8">
           <Link to={verifiedMobile ? "/panel" : "/login"} aria-label="دادوین">
             <Brand />
           </Link>
@@ -101,6 +102,16 @@ export default function ProfileLayout() {
                     <span>گفتگو</span>
                   </Link>
                 )} */}
+                {isLawyer && (
+                  <Link
+                    to="/channels"
+                    className={`flex items-center gap-1.5 text-navy transition-colors hover:text-primary ${isChannelsActive ? "font-bold underline" : ""
+                      }`}
+                  >
+                    <Layers size={16} />
+                    <span>کانال‌ها</span>
+                  </Link>
+                )}
                 {isClient && (
                   <Link
                     to="/requests"
@@ -160,11 +171,13 @@ export default function ProfileLayout() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1200px] flex-1 px-5 py-8 sm:px-8 sm:py-10">
-        <Outlet />
+      <main className="mx-auto flex w-full min-h-0 max-w-[1680px] flex-1 flex-col overflow-hidden px-5 py-4 sm:px-8">
+        <div className="h-full min-h-0 overflow-y-auto">
+          <Outlet />
+        </div>
       </main>
 
-      <footer className="border-t border-line bg-white py-6 px-5 text-center text-[11px] text-muted shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.03)]">
+      <footer className="shrink-0 border-t border-line bg-white py-4 px-5 text-center text-[11px] text-muted shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.03)]">
         دادوین · تخصص، شفافیت، اعتماد
       </footer>
     </div>

@@ -4,7 +4,7 @@ import TrustItem from "./TrustItem";
 export default function BrandPanel() {
   return (
     <aside
-      className="brand-panel relative hidden min-h-[850px] flex-col overflow-hidden text-white lg:flex"
+      className="brand-panel relative hidden h-full min-h-0 flex-col overflow-hidden text-white lg:flex"
       dir="rtl"
     >
       <div className="relative z-10 flex h-full flex-1 flex-col px-10 py-12 xl:px-14">

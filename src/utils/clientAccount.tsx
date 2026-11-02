@@ -8,9 +8,19 @@ export function profileRecord(profile: UserProfile | null | undefined) {
   return profile;
 }
 
+function permitText(profile: UserProfile | null | undefined) {
+  const permit = profileRecord(profile)?.registrationPermit;
+  return (typeof permit === "string" ? permit : "").trim();
+}
+
 export function isClientAccount(profile: UserProfile | null | undefined) {
   const record = profileRecord(profile);
   if (record?.id == null) return false;
-  const permit = record.registrationPermit;
-  return (typeof permit === "string" ? permit : "").trim() === "";
+  return permitText(profile) === "";
+}
+
+export function isLawyerAccount(profile: UserProfile | null | undefined) {
+  const record = profileRecord(profile);
+  if (record?.id == null) return false;
+  return permitText(profile) !== "";
 }
