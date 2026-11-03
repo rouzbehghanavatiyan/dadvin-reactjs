@@ -145,16 +145,26 @@ export async function saveProfile(
     signal,
   }: SaveProfileOptions = {},
 ) {
-  let attachmentId = 0;
+  let attachmentId = Number(values.profileAttachmentId) || 0;
 
   if (photo) {
     const uploadRes = await createAttachment(photo, attachmentMetadata, { signal });
+    const upload =
+      uploadRes && typeof uploadRes === "object"
+        ? (uploadRes as Record<string, unknown>)
+        : {};
+    if (upload.success === false || upload.isSuccess === false) {
+      throw new Error(
+        typeof upload.message === "string" ? upload.message : "آپلود تصویر ناموفق بود.",
+      );
+    }
     attachmentId = Number(extractAttachmentId(uploadRes)) || 0;
+    if (!attachmentId) throw new Error("شناسه تصویر دریافت نشد.");
   }
 
   const payload = createProfilePayload({
     ...values,
-    profileAttachmentId: Number(attachmentId) || 0,
+    profileAttachmentId: attachmentId || null,
   });
 
   const profileRes = await createProfile(payload, { signal });

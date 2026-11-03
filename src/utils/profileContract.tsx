@@ -7,56 +7,77 @@ const int32 = (value: unknown): value is number =>
   value >= -2147483648 &&
   value <= 2147483647;
 
-function answersFor(values: unknown, required: boolean) {
-  if (
-    !Array.isArray(values) ||
-    (required ? values.length !== 6 : values.length > 6)
-  )
-    throw new Error(
-      required
-        ? "دقیقاً شش پاسخ اجباری لازم است."
-        : "حداکثر شش پاسخ اختیاری مجاز است.",
-    );
-  return values.map((answer: unknown) => {
-    const item =
-      answer && typeof answer === "object"
-        ? (answer as { questionId?: unknown; selectedOptionId?: unknown })
-        : {};
-    if (!int32(item.questionId) || item.questionId <= 0)
-      throw new Error("شناسه سؤال باید از فهرست تأییدشده سرور انتخاب شود.");
-    if (
-      item.selectedOptionId != null &&
-      (!int32(item.selectedOptionId) || item.selectedOptionId <= 0)
-    )
-      throw new Error("شناسه گزینه نامعتبر است.");
-    if (required && item.selectedOptionId == null)
-      throw new Error("پاسخ تمام سؤال‌های اجباری را انتخاب کنید.");
-    return {
-      questionId: item.questionId,
-      selectedOptionId: item.selectedOptionId ?? null,
-    };
-  });
+const membershipIds = { bar: 1, "judiciary-center": 2 } as const;
+const employmentIds = { "grade-one": 1, trainee: 2 } as const;
+
+function text(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function optionId(
+  map: Record<string, number>,
+  value: unknown,
+) {
+  const key = text(value);
+  return key && map[key] ? map[key] : null;
+}
+
+function labelFor(map: Record<number, string>, value: unknown) {
+  const id = Number(value);
+  return Number.isInteger(id) ? map[id] ?? "" : "";
+}
+
+function optionalRecord(value: unknown) {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 export function createProfilePayload(formValues: ProfileFormInput = {}) {
-  const mandatoryAnswers = [
-    { questionId: 1, selectedOptionId: Number(formValues.q1) || 0 },
-    { questionId: 2, selectedOptionId: Number(formValues.q2) || 0 },
-    { questionId: 3, selectedOptionId: Number(formValues.q3) || 0 },
-    { questionId: 4, selectedOptionId: Number(formValues.q4) || 0 },
-    { questionId: 5, selectedOptionId: Number(formValues.q5) || 0 },
-    { questionId: 6, selectedOptionId: Number(formValues.q6) || 0 },
-  ];
-
-  const optionalAnswers = Array.isArray(formValues.optionalAnswers)
-    ? formValues.optionalAnswers
-    : [];
+  const isLawyer =
+    text(formValues.registrationPermit) !== "" || formValues.role === "lawyer";
+  const attachment = Number(formValues.profileAttachmentId);
+  const optionalUser = {
+    scientificBasis: text(formValues.education),
+    postgraduateStudy: text(formValues.graduateField),
+    yearsActivity: text(formValues.experienceYears),
+    cms: text(formValues.cmsStats),
+    successfulCases: text(formValues.successfulCases),
+    sampleRulings: text(formValues.sampleVerdicts),
+  };
 
   return {
-    mandatoryAnswers,
-    optionalAnswers,
     score: Number(formValues.score) || 0,
-    profileAttachmentId: Number(formValues.profileAttachmentId) || 0,
+    profileAttachmentId: Number.isInteger(attachment) && attachment > 0 ? attachment : null,
+    membership: isLawyer ? optionId(membershipIds, formValues.membership) : null,
+    employmentStatus: isLawyer
+      ? optionId(employmentIds, formValues.employmentStatus)
+      : null,
+    optionalUser: isLawyer ? optionalUser : null,
+  };
+}
+
+export function readProfileAnswers(profile: {
+  membership?: unknown;
+  employmentStatus?: unknown;
+  optionalUser?: unknown;
+} | null | undefined) {
+  const optional = optionalRecord(profile?.optionalUser);
+  return {
+    membership: labelFor(
+      { 1: "bar", 2: "judiciary-center" },
+      profile?.membership,
+    ),
+    employmentStatus: labelFor(
+      { 1: "grade-one", 2: "trainee" },
+      profile?.employmentStatus,
+    ),
+    education: text(optional.scientificBasis),
+    graduateField: text(optional.postgraduateStudy),
+    experienceYears: text(optional.yearsActivity),
+    cmsStats: text(optional.cms),
+    successfulCases: text(optional.successfulCases),
+    sampleVerdicts: text(optional.sampleRulings),
   };
 }
 

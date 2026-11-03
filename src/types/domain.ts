@@ -6,9 +6,20 @@ export type UserProfile = {
   mobile?: string;
   email?: string;
   registrationPermit?: string;
+  membership?: number | null;
+  employmentStatus?: number | null;
+  optionalUser?: {
+    scientificBasis?: string;
+    postgraduateStudy?: string;
+    yearsActivity?: string;
+    cms?: string;
+    successfulCases?: string;
+    sampleRulings?: string;
+  } | null;
   token?: string;
   message?: string;
   score?: number;
+  createdAt?: string | null;
   profileAttachmentId?: number;
   photoLocation?: string;
   profileAttachment?: {

@@ -344,7 +344,7 @@ test("profile save uploads first, skips upload without photo and stops on upload
         data: {
           success: !(uploadFailure && (config.url ?? "").includes("Attachment")),
           message: "local fixture",
-          result: { fixtureId: 77 },
+          result: { attachmentId: 77 },
         },
       },
     };
@@ -360,14 +360,14 @@ test("profile save uploads first, skips upload without photo and stops on upload
     await saveProfile(profileFixture, options);
     assert.deepEqual(
       requests.map((r) => r.url),
-      ["/api/Attachment/createAttachment", "/api/Profile/createProfile"],
+      ["/api/Attachment/createAttachment", "/api/Users/createProfile"],
     );
     assert.equal(JSON.parse(requests[1].data).profileAttachmentId, 77);
     requests.length = 0;
     await saveProfile(profileFixture);
     assert.deepEqual(
       requests.map((r) => r.url),
-      ["/api/Profile/createProfile"],
+      ["/api/Users/createProfile"],
     );
     assert.equal(JSON.parse(requests[0].data).profileAttachmentId, null);
     requests.length = 0;
@@ -379,18 +379,9 @@ test("profile save uploads first, skips upload without photo and stops on upload
     );
     requests.length = 0;
     uploadFailure = false;
-    await assert.rejects(
-      saveProfile(profileFixture, { photo: options.photo }),
-    );
-    assert.equal(requests.length, 1);
+    await saveProfile(profileFixture, { photo: options.photo });
+    assert.equal(JSON.parse(requests.at(-1)?.data as string).profileAttachmentId, 77);
     requests.length = 0;
-    await assert.rejects(
-      saveProfile(profileFixture, { photo: options.photo }),
-    );
-    await assert.rejects(
-      saveProfile({ ...profileFixture, mandatoryAnswers: [] }, options),
-    );
-    assert.equal(requests.length, 0);
     const controller = new AbortController();
     controller.abort();
     await assert.rejects(
@@ -481,42 +472,44 @@ test("profile-photo metadata uses pf, original filename and lowercase extension 
   ), /پسوند/);
 });
 
-test("profile adapter rejects incomplete, duplicate and text answers before any request", () => {
+test("profile adapter sends the registered membership, employment and optional fields", () => {
   assert.equal(createProfilePayload(profileFixture).profileAttachmentId, null);
-  assert.throws(() =>
-    createProfilePayload({
-      ...profileFixture,
-      mandatoryAnswers: profileFixture.mandatoryAnswers.slice(1),
-    }),
-  );
-  assert.throws(() =>
-    createProfilePayload({
-      ...profileFixture,
-      optionalAnswers: [profileFixture.mandatoryAnswers[0]],
-    }),
-  );
-  assert.throws(() =>
-    createProfilePayload({ ...profileFixture, score: undefined }),
-  );
-  assert.throws(() =>
-    createProfilePayload({
-      ...profileFixture,
-      mandatoryAnswers: profileFixture.mandatoryAnswers.map((answer) => ({
-        ...answer,
-        selectedOptionId: "حقوقی",
-      })),
-    }),
-  );
   assert.deepEqual(
-    Object.keys(
-      createProfilePayload({
-        ...profileFixture,
-        mobile: "must-not-send",
-        token: "must-not-send",
-      }),
-    ).sort(),
-    ["mandatoryAnswers", "optionalAnswers", "profileAttachmentId", "score"],
+    createProfilePayload({
+      role: "lawyer",
+      registrationPermit: "123",
+      membership: "bar",
+      employmentStatus: "trainee",
+      education: "master",
+      graduateField: "حقوق",
+      experienceYears: "4",
+      cmsStats: "12",
+      successfulCases: "3",
+      sampleVerdicts: "رای نمونه",
+      score: 8,
+      profileAttachmentId: 15,
+      mobile: "must-not-send",
+      token: "must-not-send",
+    }),
+    {
+      score: 8,
+      profileAttachmentId: 15,
+      membership: 1,
+      employmentStatus: 2,
+      optionalUser: {
+        scientificBasis: "master",
+        postgraduateStudy: "حقوق",
+        yearsActivity: "4",
+        cms: "12",
+        successfulCases: "3",
+        sampleRulings: "رای نمونه",
+      },
+    },
   );
+  const client = createProfilePayload({ role: "client", registrationPermit: "" });
+  assert.equal(client.membership, null);
+  assert.equal(client.employmentStatus, null);
+  assert.equal(client.optionalUser, null);
 });
 
 test("bearer token is attached only by the axios interceptor", async () => {
@@ -606,7 +599,7 @@ test("real Axios transport sends binary FormFiles with boundary and scoped Beare
       received[0].headers.authorization,
       "Bearer local-fixture-token",
     );
-    assert.equal(received[1].url, "/api/Profile/createProfile");
+    assert.equal(received[1].url, "/api/Users/createProfile");
     const profileBody = JSON.parse(received[1].body);
     assert.equal(profileBody.token, undefined);
     assert.equal(Object.hasOwn(profileBody, "profileAttachmentId"), false);

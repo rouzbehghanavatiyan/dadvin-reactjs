@@ -3,7 +3,7 @@ export const endpoints = {
   verifyLoginCode: "/api/Users/verifyLoginCode",
   register: "/api/Users/register",
   verifySignUpCode: "/api/Users/verifySignUpCode",
-  createProfile: "/api/Profile/createProfile",
+  createProfile: "/api/Users/createProfile",
   createAttachment: "/api/Attachment/createAttachment",
   getUserProfile: "/api/Users/getUserProfile",
 } as const;

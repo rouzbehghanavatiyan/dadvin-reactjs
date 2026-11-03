@@ -84,7 +84,11 @@ export default function ProfileLayout() {
     <div className="flex h-full flex-col overflow-hidden bg-[#f1f5f9]">
       <header className="shrink-0 border-b border-line bg-white">
         <div className="mx-auto flex max-w-[1680px] items-center justify-between px-5 py-3.5 sm:px-8">
-          <Link to={verifiedMobile ? "/panel" : "/login"} aria-label="دادوین">
+          <Link
+            to={verifiedMobile ? "/panel" : "/login"}
+            aria-label="دادوین"
+            aria-current={location.pathname === "/panel" ? "page" : undefined}
+          >
             <Brand />
           </Link>
 
@@ -124,8 +128,8 @@ export default function ProfileLayout() {
                 )}
 
                 <Link
-                  to="/panel"
-                  className={`flex items-center gap-2.5 rounded-full py-1 pr-1.5 pl-3 transition-colors hover:bg-slate-100 ${location.pathname === "/panel"
+                  to="/profile"
+                  className={`flex items-center gap-2.5 rounded-full py-1 pr-1.5 pl-3 transition-colors hover:bg-slate-100 ${location.pathname.startsWith("/profile")
                     ? "bg-slate-100 font-bold"
                     : "text-navy"
                     }`}
@@ -172,7 +176,7 @@ export default function ProfileLayout() {
       </header>
 
       <main className="mx-auto flex w-full min-h-0 max-w-[1680px] flex-1 flex-col overflow-hidden px-5 py-4 sm:px-8">
-        <div className="h-full min-h-0 overflow-y-auto">
+        <div className="h-full min-h-0 overflow-x-hidden overflow-y-auto">
           <Outlet />
         </div>
       </main>

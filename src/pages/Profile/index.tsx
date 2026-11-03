@@ -7,6 +7,7 @@ import {
   BriefcaseBusiness,
   FileText,
   Check,
+  Pencil,
   RotateCcw,
   Loader2,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import ProfileSummary from "../../components/profile/ProfileSummary";
 import useProfilePhoto from "../../hooks/useProfilePhoto";
 import usePageTitle from "../../hooks/usePageTitle";
 import { saveProfile } from "../../services";
+import { readProfileAnswers } from "../../utils/profileContract";
 
 const apiOrigin = (
   import.meta.env?.VITE_URL || "http://171.22.25.222:9090/"
@@ -64,14 +66,7 @@ function valuesFromProfile(
     city: "",
     role: role === "lawyer" ? "lawyer" : "client",
     registrationPermit: text(profile?.registrationPermit),
-    membership: "",
-    employmentStatus: "",
-    education: "",
-    graduateField: "",
-    experienceYears: "",
-    cmsStats: "",
-    successfulCases: "",
-    sampleVerdicts: "",
+    ...readProfileAnswers(profile),
     specialties: [],
     bio: "",
   };
@@ -95,10 +90,40 @@ const lockableFields = [
 
 const clientFields = ["name", "lastName", "phoneNumber", "email"] as const;
 
+const requiredFieldKeys = [
+  "name",
+  "lastName",
+  "phoneNumber",
+  "email",
+  "registrationPermit",
+  "membership",
+  "employmentStatus",
+] as const satisfies readonly (keyof ProfileFormValues)[];
+
+const optionalFieldKeys = [
+  "education",
+  "graduateField",
+  "experienceYears",
+  "cmsStats",
+  "successfulCases",
+  "sampleVerdicts",
+] as const satisfies readonly (keyof ProfileFormValues)[];
+
 function locksFromValues(values: ProfileFormValues): LockedProfileFields {
   return Object.fromEntries(
     lockableFields.map((field) => [field, values[field].trim() !== ""]),
   );
+}
+
+function unlockFields(
+  locked: LockedProfileFields,
+  fields: readonly (keyof ProfileFormValues)[],
+  editing: boolean,
+): LockedProfileFields {
+  if (!editing) return locked;
+  const next = { ...locked };
+  for (const field of fields) next[field] = false;
+  return next;
 }
 
 export default function Profile() {
@@ -117,6 +142,7 @@ export default function Profile() {
     handleSubmit,
     watch,
     reset,
+    getValues,
     formState: { errors },
   } = useForm<ProfileFormValues>({ defaultValues: defaults, shouldUnregister: true });
 
@@ -143,6 +169,8 @@ export default function Profile() {
     Boolean(savedPhoto) &&
     visibleFields.every((field) => savedValues[field].trim() !== "");
 
+  const [editingRequired, setEditingRequired] = useState(false);
+  const [editingOptional, setEditingOptional] = useState(false);
   const [reviewed, setReviewed] = useState<ProfileFormValues | null>(null);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -157,7 +185,14 @@ export default function Profile() {
     try {
       const rawFile = photo.photo?.file;
 
-      const response = await saveProfile(data, {
+      const current = { ...(savedValues ?? {}), ...getValues(), ...data };
+      const response = await saveProfile(
+        {
+          ...current,
+          score: userProfile?.score ?? 0,
+          profileAttachmentId: userProfile?.profileAttachmentId ?? null,
+        },
+        {
         photo: rawFile,
         attachmentMetadata: { AttachmentType: "profile" },
       });
@@ -178,7 +213,11 @@ export default function Profile() {
         return;
       }
 
-      setReviewed({ ...data });
+      setSavedValues(current);
+      setLocked(locksFromValues(current));
+      setEditingRequired(false);
+      setEditingOptional(false);
+      setReviewed(current);
       setFeedback({
         type: "success",
         message:
@@ -208,15 +247,62 @@ export default function Profile() {
   function clear() {
     reset(savedValues ?? defaults);
     photo.remove();
+    setEditingRequired(false);
+    setEditingOptional(false);
     setReviewed(null);
     setFeedback(null);
+  }
+
+  function cancelEdit(
+    fields: readonly (keyof ProfileFormValues)[],
+    close: () => void,
+  ) {
+    const current = getValues();
+    const restored = { ...current };
+    if (savedValues) {
+      for (const field of fields) restored[field] = savedValues[field];
+    }
+    reset(restored);
+    close();
+    setFeedback(null);
+  }
+
+  function editButton(
+    editing: boolean,
+    fields: readonly (keyof ProfileFormValues)[],
+    open: () => void,
+    close: () => void,
+  ) {
+    if (editing) {
+      return (
+        <Btn
+          variant="ghost"
+          className="!px-3 !py-2"
+          onClick={() => cancelEdit(fields, close)}
+          disabled={isSubmitting}
+        >
+          انصراف
+        </Btn>
+      );
+    }
+    return (
+      <Btn
+        variant="outline"
+        className="!px-3 !py-2"
+        onClick={open}
+        disabled={isSubmitting}
+      >
+        <Pencil size={15} />
+        ویرایش
+      </Btn>
+    );
   }
 
   const summary = reviewed || values;
 
   return (
-    <>
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_300px]">
+    <div className="-mx-5 -my-4 min-h-full bg-white px-5 py-4 sm:-mx-8 sm:px-8">
+      <div className="mx-auto w-full min-w-0 max-w-3xl">
         <form
           noValidate
           onSubmit={handleSubmit(onSubmit)}
@@ -258,11 +344,17 @@ export default function Profile() {
                   ? "تکمیل نام، تماس و ایمیل لازم است."
                   : "تکمیل نام، تماس، ایمیل، عضویت، شماره پروانه و وضعیت اشتغال لازم است."
               }
+              action={editButton(
+                editingRequired,
+                requiredFieldKeys,
+                () => setEditingRequired(true),
+                () => setEditingRequired(false),
+              )}
             >
               <LawyerRequiredFields
                 register={register}
                 errors={errors}
-                locked={locked}
+                locked={unlockFields(locked, requiredFieldKeys, editingRequired)}
                 showLawyerFields={!isClient}
               />
             </ProfileSection>
@@ -271,11 +363,17 @@ export default function Profile() {
                 icon={BriefcaseBusiness}
                 title="گزینه‌های اختیاری"
                 description="پایه علمی، رشته، سنوات، آمار و نمونه آرا را در صورت تمایل وارد کنید."
+                action={editButton(
+                  editingOptional,
+                  optionalFieldKeys,
+                  () => setEditingOptional(true),
+                  () => setEditingOptional(false),
+                )}
               >
                 <LawyerOptionalFields
                   register={register}
                   errors={errors}
-                  locked={locked}
+                  locked={unlockFields(locked, optionalFieldKeys, editingOptional)}
                 />
               </ProfileSection>
             )}
@@ -287,37 +385,32 @@ export default function Profile() {
             </Alert>
           )}
 
-          {!profileSaved && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-5">
-              <p className="text-[11px] text-muted">
-                پس از تایید، تصویر آپلود شده و پروفایل شما ثبت نهایی می‌شود.
-              </p>
-              <div className="flex gap-2">
-                <Btn variant="ghost" onClick={clear} disabled={isSubmitting}>
-                  <RotateCcw size={15} />
-                  پاک‌کردن فرم
-                </Btn>
-                <Btn
-                  type="submit"
-                  disabled={photo.busy || Boolean(photo.error) || isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      در حال ذخیره...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={16} />
-                      ثبت و ذخیره پروفایل
-                    </>
-                  )}
-                </Btn>
-              </div>
+          {(!profileSaved || editingRequired || editingOptional) && (
+            <div className="flex gap-2">
+              <Btn variant="ghost" onClick={clear} disabled={isSubmitting}>
+                <RotateCcw size={15} />
+                پاک‌کردن فرم
+              </Btn>
+              <Btn
+                type="submit"
+                disabled={photo.busy || Boolean(photo.error) || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    در حال ذخیره...
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    ثبت و ذخیره پروفایل
+                  </>
+                )}
+              </Btn>
             </div>
           )}
         </form>
       </div>
-    </>
+    </div>
   );
 }
