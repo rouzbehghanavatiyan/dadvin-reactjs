@@ -14,9 +14,7 @@ export default function RoleSelector({
 }) {
   return (
     <fieldset>
-      <legend className="mb-2.5 text-[13px] font-medium text-ink">
-        با چه نقشی همراه ما هستید؟
-      </legend>
+
       <div className="grid grid-cols-2 gap-2">
         {roles.map(({ value, title, Icon }) => (
           <label key={value} className="relative cursor-pointer">

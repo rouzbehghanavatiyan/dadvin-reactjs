@@ -11,19 +11,7 @@ export default function AuthFooter() {
         />
         <div className="text-[10px] leading-6 text-muted">
           <p>حفظ محرمانگی اطلاعات شما، اولویت ماست.</p>
-          <p>ما به حریم خصوصی شما احترام می‌گذاریم.</p>
         </div>
-      </div>
-      <div className="mt-4 flex justify-center gap-5 text-[10px] text-muted">
-        <Link to="/privacy" className="hover:text-ink">
-          حریم خصوصی
-        </Link>
-        <span>·</span>
-        <Link to="/terms" className="hover:text-ink">
-          شرایط استفاده
-        </Link>
-        <span>·</span>
-        <span>© دادوین ۱۴۰۵</span>
       </div>
     </footer>
   );

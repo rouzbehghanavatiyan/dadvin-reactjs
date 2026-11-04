@@ -41,12 +41,12 @@ export default function RegisterForm() {
   });
   const role = watch("role");
   const flow = useRegistration();
- 
+
   const onSubmit = (values: RegistrationFormValues) => {
     dispatch(setSelectedRole(values.role));
     return flow.requestCode(values);
   };
- 
+
   if (flow.step === "otp")
     return (
       <OtpForm
@@ -90,9 +90,7 @@ export default function RegisterForm() {
         ارسال کد تأیید
         <ArrowLeft size={17} />
       </Btn>
-      <p className="text-center text-[10px] leading-6 text-muted">
-        ثبت‌نام با تأیید کد پیامک انجام می‌شود.
-      </p>
+
     </form>
   );
 }

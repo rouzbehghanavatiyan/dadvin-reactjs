@@ -11,7 +11,6 @@ export default function Login() {
   return (
     <>
       <MainTitle title="به دادوین خوش آمدید">
-        شماره موبایل خود را وارد کنید تا کد تأیید برای شما ارسال شود.
       </MainTitle>
       <AuthTabs />
       <LoginForm />

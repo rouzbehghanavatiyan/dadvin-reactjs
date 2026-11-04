@@ -54,9 +54,7 @@ export default function MobileLoginForm({
         دریافت کد تأیید
         <ArrowLeft size={17} />
       </Btn>
-      <p className="text-center text-xs leading-7 text-muted">
-        کد تأیید به شماره موبایل شما پیامک می‌شود.
-      </p>
+    
     </form>
   );
 }
