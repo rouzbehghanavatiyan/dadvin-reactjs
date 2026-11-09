@@ -12,6 +12,7 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "@microsoft/signalr": "^9.0.19",
     "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.12.2",
     "lucide-react": "^0.468.0",

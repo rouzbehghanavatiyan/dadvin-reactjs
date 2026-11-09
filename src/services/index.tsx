@@ -2,6 +2,7 @@ import type { AxiosRequestConfig } from "axios";
 import { postAuth, postMultipart, getAuth } from "./masterService";
 import { endpoints } from "./endpoints";
 import { createProfilePayload } from "../utils/profileContract";
+import { validateRequestFile } from "../utils/requestFile";
 import {
   createRegisterPayload,
   createVerifyPayload,
@@ -93,6 +94,82 @@ export const createProfile = async (
   payload: ProfileFormInput,
   config?: AxiosRequestConfig,
 ) => readEnvelope(await postAuth<ApiEnvelope>(endpoints.createProfile, payload, config));
+
+export async function createReqClient(
+  values: { domainId: number; requestText: string; file?: File | null },
+  config?: AxiosRequestConfig,
+) {
+  const domainId = Number(values.domainId);
+  const requestText = values.requestText.trim();
+  if (!Number.isInteger(domainId) || domainId <= 0) {
+    throw new Error("شناسه حوزه الزامی است.");
+  }
+  if (!requestText) throw new Error("متن درخواست الزامی است.");
+
+  const file = values.file ?? null;
+  if (file) {
+    const problem = validateRequestFile(file);
+    if (problem) throw new Error(problem);
+  }
+
+  const formData = new FormData();
+  formData.append("domainId", String(domainId));
+  formData.append("requestText", requestText);
+  if (file) formData.append("file", file);
+
+  const response = await postMultipart<ApiEnvelope>(
+    endpoints.createReqClient,
+    formData,
+    config,
+  );
+  readEnvelope(response);
+  return response;
+}
+
+export type ClientRequestItem = {
+  id: number;
+  userId: number;
+  domainId: number;
+  requestText: string;
+  filePath: string | null;
+  createDate: string;
+};
+
+const readRequestItem = (value: unknown): ClientRequestItem | null => {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const id = Number(record.id ?? record.Id);
+  const userId = Number(record.userId ?? record.UserId);
+  const domainId = Number(record.domainId ?? record.DomainId);
+  const requestText = String(record.requestText ?? record.RequestText ?? "").trim();
+  const createDate = String(record.createDate ?? record.CreateDate ?? "");
+  if (!id || !domainId || !requestText || !createDate) return null;
+  const filePath = record.filePath ?? record.FilePath;
+  return {
+    id,
+    userId: Number.isFinite(userId) ? userId : 0,
+    domainId,
+    requestText,
+    filePath: typeof filePath === "string" && filePath ? filePath : null,
+    createDate,
+  };
+};
+
+export async function getReqClient(
+  config?: AxiosRequestConfig,
+): Promise<ClientRequestItem[]> {
+  const response = await getAuth<ApiEnvelope>(endpoints.getReqClient, config);
+  const data = readEnvelope(response);
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : [];
+  return list.flatMap((item) => {
+    const request = readRequestItem(item);
+    return request ? [request] : [];
+  });
+}
 
 export const createAttachment = async (
   files: File | Blob | Array<File | Blob>,

@@ -5,6 +5,7 @@ import Btn from "../../UI/Btn";
 import usePageTitle from "../../hooks/usePageTitle";
 import { useAppSelector } from "../../hooks/store/store";
 import { isLawyerAccount, profileRecord } from "../../utils/clientAccount";
+import { useLawyerRequestSocket } from "../../hooks/useLawyerRequestSocket";
 import ClientWindow from "./ClientWindow";
 import { courtChannels, roomsFor } from "./rooms";
 
@@ -15,6 +16,7 @@ export default function ChannelsPage() {
   const userProfile = useAppSelector((state) => state.main.userProfile);
   const profile = profileRecord(userProfile);
   const isLawyer = isLawyerAccount(profile);
+  const incomingRequests = useLawyerRequestSocket(isLawyer);
   const [selected, setSelected] = useState<string[]>(savedChannels);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(savedChannels.length === 3);
@@ -157,7 +159,7 @@ export default function ChannelsPage() {
         </div>
       </section>
       <div className="h-full min-h-0">
-        <ClientWindow roomName={roomName} />
+        <ClientWindow roomName={roomName} incoming={incomingRequests} />
       </div>
     </div>
   );

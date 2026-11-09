@@ -2,6 +2,10 @@ import { useState, type FormEvent } from "react";
 import { UserRound } from "lucide-react";
 import Btn from "../../UI/Btn";
 import TextArea from "../../UI/TextArea";
+import type { IncomingClientRequest } from "../../services/requestSocket";
+
+const domainLabel = (domainId: number) =>
+  domainId === 1 ? "خانواده" : domainId === 2 ? "کیفری" : domainId === 3 ? "حقوق" : `حوزه ${domainId}`;
 
 type ClientMessage = {
   id: string;
@@ -49,8 +53,22 @@ const initialMessages: ClientMessage[] = [
   },
 ];
 
-export default function ClientWindow({ roomName }: { roomName: string | null }) {
+export default function ClientWindow({
+  roomName,
+  incoming = [],
+}: {
+  roomName: string | null;
+  incoming?: IncomingClientRequest[];
+}) {
   const [messages, setMessages] = useState(initialMessages);
+  const liveMessages: ClientMessage[] = incoming.map((request) => ({
+    id: `live-${request.id}`,
+    name: `موکل ${request.userId} · ${domainLabel(request.domainId)}`,
+    text: request.requestText,
+    status: "pending",
+    request: "",
+  }));
+  const visibleMessages = [...liveMessages, ...messages];
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
@@ -99,7 +117,7 @@ export default function ClientWindow({ roomName }: { roomName: string | null }) 
         <h2 className="text-lg font-bold text-ink">{roomName ?? "پیام موکل‌ها"}</h2>
       </header>
       <ul className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
-        {messages.map((message) => (
+        {visibleMessages.map((message) => (
           <li key={message.id} className="rounded-2xl border border-line bg-[#f8fafc] p-4">
             <div className="flex items-start gap-3">
               <span

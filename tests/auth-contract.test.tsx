@@ -20,6 +20,7 @@ import {
   verifyLoginCode,
   createProfile,
   createAttachment,
+  createReqClient,
   saveProfile,
   getUserProfile,
 } from "../src/services";
@@ -48,6 +49,7 @@ import {
   validateProfilePhoto,
   MAX_PROFILE_PHOTO_SIZE,
 } from "../src/utils/profilePhoto";
+import { validateRequestFile } from "../src/utils/requestFile";
 
 function memoryStorage(): Storage {
   const memory = new Map<string, string>();
@@ -611,6 +613,73 @@ test("real Axios transport sends binary FormFiles with boundary and scoped Beare
     });
   }
 });
+test("request file accepts a 10 megabyte photo, spreadsheet or pdf and rejects anything else", () => {
+  assert.match(
+    validateRequestFile(new File(["notes"], "notes.txt", { type: "text/plain" })) ?? "",
+    /عکس، اکسل یا PDF/,
+  );
+  assert.match(
+    validateRequestFile({
+      name: "large.pdf",
+      type: "application/pdf",
+      size: 10 * 1024 * 1024 + 1,
+    }) ?? "",
+    /۱۰ مگابایت/,
+  );
+  assert.equal(
+    validateRequestFile({ name: "ok.pdf", type: "application/pdf", size: 10 * 1024 * 1024 }),
+    null,
+  );
+});
+
+test("client request posts the selected domain and text", async () => {
+  const previousAdapter = http.defaults.adapter;
+  const requests: Array<{ url?: string; fields: Record<string, string> }> = [];
+  http.defaults.adapter = async (config) => {
+    const fields: Record<string, string> = {};
+    if (config.data instanceof FormData) {
+      for (const [key, value] of config.data.entries()) {
+        fields[key] = typeof value === "string" ? value : value.name;
+      }
+    }
+    requests.push({ url: config.url, fields });
+    return {
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      config,
+      data: {
+        code: 0,
+        message: "درخواست با موفقیت ثبت شد.",
+        data: { id: 3, domainId: 2, requestText: "پیگیری سرقت" },
+      },
+    };
+  };
+  try {
+    await assert.rejects(
+      () => createReqClient({ domainId: 0, requestText: "متن" }),
+      /شناسه حوزه/,
+    );
+    await assert.rejects(
+      () => createReqClient({ domainId: 1, requestText: "  " }),
+      /متن درخواست/,
+    );
+    assert.equal(requests.length, 0);
+    const response = await createReqClient({
+      domainId: 2,
+      requestText: "  پیگیری سرقت  ",
+    });
+    assert.equal(requests[0]?.url, "/api/Users/createReqClient");
+    assert.deepEqual(requests[0]?.fields, {
+      domainId: "2",
+      requestText: "پیگیری سرقت",
+    });
+    assert.equal(response.message, "درخواست با موفقیت ثبت شد.");
+  } finally {
+    http.defaults.adapter = previousAdapter;
+  }
+});
+
 test("backend lookup error is displayed instead of a false success", () => {
   const error = {
     isAxiosError: true,

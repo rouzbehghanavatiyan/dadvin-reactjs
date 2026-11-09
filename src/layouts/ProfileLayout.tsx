@@ -13,6 +13,7 @@ import { clearVerifiedSession, getAccessToken } from "../utils/authSession";
 import { getUserProfile } from "../services";
 import { isClientAccount, isLawyerAccount } from "../utils/clientAccount";
 import NotificationBell from "../components/notifications/NotificationBell";
+import LawyerRequestNotice from "../components/notifications/LawyerRequestNotice";
 
 const BASE_URL = (
   import.meta.env?.VITE_URL || "http://171.22.25.222:9090/"
@@ -174,6 +175,8 @@ export default function ProfileLayout() {
           </div>
         </div>
       </header>
+
+      <LawyerRequestNotice enabled={isLawyer} />
 
       <main className="mx-auto flex w-full min-h-0 max-w-[1680px] flex-1 flex-col overflow-hidden px-5 py-4 sm:px-8">
         <div className="h-full min-h-0 overflow-x-hidden overflow-y-auto">
