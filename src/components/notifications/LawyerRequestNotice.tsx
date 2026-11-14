@@ -3,18 +3,12 @@ import { X } from "lucide-react";
 import Btn from "../../UI/Btn";
 import { useLawyerRequestSocket } from "../../hooks/useLawyerRequestSocket";
 import type { IncomingClientRequest } from "../../services/requestSocket";
-
-function domainLabel(domainId: number) {
-  if (domainId === 1) return "خانواده";
-  if (domainId === 2) return "کیفری";
-  if (domainId === 3) return "حقوق";
-  return `حوزه ${domainId}`;
-}
+import { domainLabel } from "../../utils/requestDomains";
 
 export default function LawyerRequestNotice({ enabled }: { enabled: boolean }) {
   const requests = useLawyerRequestSocket(enabled);
   const [hidden, setHidden] = useState<number[]>([]);
-  const visible = requests.filter((item) => !hidden.includes(item.id)).slice(0, 3);
+  const visible = requests.filter((item) => !hidden.includes(item.id)).slice(0, 5);
   if (!visible.length) return null;
 
   function hide(request: IncomingClientRequest) {

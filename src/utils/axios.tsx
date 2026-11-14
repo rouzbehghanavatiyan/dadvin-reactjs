@@ -1,5 +1,5 @@
 import axios from "axios";
-import { clearVerifiedSession, getAccessToken } from "./authSession";
+import { expireSession, getAccessToken, isUnauthorizedResponse } from "./authSession";
 
 const baseURL = import.meta.env?.VITE_URL || "http://171.22.25.222:9090/";
 
@@ -12,13 +12,16 @@ const http = axios.create({
   },
 });
 
-const handleUnauthorized = () => {
-  clearVerifiedSession();
-  delete http.defaults.headers.common.Authorization;
-  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-    window.location.replace("/login");
-  }
-};
+const authAttempts = [
+  "/api/Users/login",
+  "/api/Users/register",
+  "/api/Users/verifyLoginCode",
+  "/api/Users/verifySignUpCode",
+];
+
+function isAuthAttempt(url: string | undefined) {
+  return authAttempts.some((path) => url?.includes(path));
+}
 
 http.interceptors.request.use(
   (config) => {
@@ -36,11 +39,10 @@ http.interceptors.response.use(
   (response) => {
     const resData = response?.data;
     if (
-      resData?.status === 401 ||
-      resData?.statusCode === 401 ||
-      resData?.code === 401
+      !isAuthAttempt(response.config?.url) &&
+      isUnauthorizedResponse(response.status, resData)
     ) {
-      handleUnauthorized();
+      expireSession();
       return Promise.reject(new Error("Unauthorized"));
     }
     return response;
@@ -50,12 +52,10 @@ http.interceptors.response.use(
       const { status, data } = error.response;
 
       if (
-        status === 401 ||
-        data?.status === 401 ||
-        data?.statusCode === 401 ||
-        data?.code === 401
+        !isAuthAttempt(error.config?.url) &&
+        isUnauthorizedResponse(status, data, error.message)
       ) {
-        handleUnauthorized();
+        expireSession();
       }
 
       if (status === 403) {

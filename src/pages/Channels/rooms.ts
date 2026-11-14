@@ -12,7 +12,7 @@ type RoomTitles = readonly [
 ];
 
 export const channelRooms = {
-  حقوقی: [
+  حقوق: [
     "مطالبه وجه",
     "الزام به تنظیم سند",
     "فسخ قرارداد",
@@ -156,7 +156,7 @@ export const channelRooms = {
     "تفکیک ملک",
     "اجرای سند لازم‌الاجرا",
   ],
-  ملکی: [
+  "اراضی املاک": [
     "خلع ید",
     "تصرف عدوانی",
     "فک رهن",
@@ -206,7 +206,14 @@ export const channelRooms = {
   ],
 } satisfies Record<string, RoomTitles>;
 
-export const courtChannels = Object.keys(channelRooms);
+export const courtChannels = [
+  "خانواده",
+  "کیفری",
+  "حقوق",
+  "ثبتی",
+  "اراضی املاک",
+  "بیمه و تصادفات",
+];
 
 const roomNumbers = ["۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹", "۱۰"];
 const occupancyPattern = [5, 9, 3, 7, 1, 8, 4, 6, 2, 5];

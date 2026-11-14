@@ -46,6 +46,49 @@ export function beginVerifiedSession(
   store.setItem("verifiedMobile", mobile as string);
 }
 
+type UnauthorizedHandler = () => void;
+
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+let redirectingToLogin = false;
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
+  unauthorizedHandler = handler;
+}
+
+function responseMessage(data: unknown) {
+  if (typeof data === "string") return data;
+  if (!data || typeof data !== "object") return "";
+  const message = (data as { message?: unknown }).message;
+  return typeof message === "string" ? message : "";
+}
+
+export function isUnauthorizedResponse(
+  status: number | undefined,
+  data: unknown,
+  fallback = "",
+) {
+  const record = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const code = Number(record.code ?? record.status ?? record.statusCode);
+  const message = `${responseMessage(data)} ${fallback}`;
+  return (
+    status === 401 ||
+    code === 401 ||
+    /توکن[^\n]{0,40}(نامعتبر|منقضی)/.test(message) ||
+    /invalid token|token is invalid|token.*expired|unauthorized|status code ['"]?401/i.test(
+      message,
+    )
+  );
+}
+
+export function expireSession() {
+  clearVerifiedSession();
+  unauthorizedHandler?.();
+  if (typeof window === "undefined" || redirectingToLogin) return;
+  if (window.location.pathname === "/login") return;
+  redirectingToLogin = true;
+  window.location.replace("/login");
+}
+
 export function clearVerifiedSession() {
   const store = storage();
   store?.removeItem(TOKEN_KEY);

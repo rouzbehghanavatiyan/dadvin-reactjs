@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { Gavel, Paperclip, Scale, Trash2, Users } from "lucide-react";
+import { Car, Gavel, LandPlot, Landmark, Paperclip, Scale, Trash2, Users } from "lucide-react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import Btn from "../../UI/Btn";
 import TextArea from "../../UI/TextArea";
@@ -9,6 +9,7 @@ import { createReqClient, getReqClient, type ClientRequestItem } from "../../ser
 import { getErrorMessage } from "../../services/masterService";
 import { isClientAccount, profileRecord } from "../../utils/clientAccount";
 import { requestFileAccept, validateRequestFile } from "../../utils/requestFile";
+import { requestDomains } from "../../utils/requestDomains";
 
 const fileBaseUrl = (
   import.meta.env?.VITE_URL || "http://171.22.25.222:9090/"
@@ -34,11 +35,19 @@ function requestFileName(path: string) {
   return path.split("/").filter(Boolean).pop() || "فایل";
 }
 
-const categories = [
-  { id: "family", label: "خانواده", domainId: 1, icon: Users },
-  { id: "criminal", label: "کیفری", domainId: 2, icon: Gavel },
-  { id: "law", label: "حقوق", domainId: 3, icon: Scale },
-] as const;
+const categoryIcons = {
+  family: Users,
+  criminal: Gavel,
+  law: Scale,
+  registry: Landmark,
+  property: LandPlot,
+  insurance: Car,
+} as const;
+
+const categories = requestDomains.map((item) => ({
+  ...item,
+  icon: categoryIcons[item.id],
+}));
 
 export default function RequestsPage() {
   usePageTitle("درخواست‌ها");
@@ -266,15 +275,21 @@ export default function RequestsPage() {
               <li key={item.id} className="rounded-xl border border-line p-4">
                 <p className="text-xs text-muted">{formatRequestDate(item.createDate)}</p>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-ink">{item.requestText}</p>
-                {item.filePath ? (
-                  <a
-                    className="mt-2 inline-block text-sm text-navy underline"
-                    href={requestFileUrl(item.filePath)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    فایل: <bdi>{requestFileName(item.filePath)}</bdi>
-                  </a>
+                {item.files.length > 0 ? (
+                  <ul className="mt-2 grid gap-1">
+                    {item.files.map((file) => (
+                      <li key={file.attachmentId}>
+                        <a
+                          className="inline-block text-sm text-navy underline"
+                          href={requestFileUrl(file.filePath)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          فایل: <bdi>{requestFileName(file.filePath)}</bdi>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
                   <p className="mt-2 text-sm text-muted">بدون فایل</p>
                 )}

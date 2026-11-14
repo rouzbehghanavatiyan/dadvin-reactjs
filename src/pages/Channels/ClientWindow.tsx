@@ -1,11 +1,33 @@
 import { useState, type FormEvent } from "react";
-import { UserRound } from "lucide-react";
+import { Download, UserRound } from "lucide-react";
 import Btn from "../../UI/Btn";
 import TextArea from "../../UI/TextArea";
 import type { IncomingClientRequest } from "../../services/requestSocket";
+import { domainLabel } from "../../utils/requestDomains";
 
-const domainLabel = (domainId: number) =>
-  domainId === 1 ? "خانواده" : domainId === 2 ? "کیفری" : domainId === 3 ? "حقوق" : `حوزه ${domainId}`;
+const fileBaseUrl = (
+  import.meta.env?.VITE_URL || "http://171.22.25.222:9090/"
+).replace(/\/+$/, "");
+
+function requestFileUrl(path: string) {
+  if (path.startsWith("http")) return path;
+  return `${fileBaseUrl}/${path.replace(/^\/+/, "")}`;
+}
+
+function requestFileName(path: string) {
+  return path.split(/[/\\]/).filter(Boolean).pop() || "فایل-موکل";
+}
+
+function saveBlob(blob: Blob, fileName: string) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}
 
 type ClientMessage = {
   id: string;
@@ -13,6 +35,7 @@ type ClientMessage = {
   text: string;
   status: "pending" | "rejected" | "sent";
   request: string;
+  filePath?: string | null;
 };
 
 const initialMessages: ClientMessage[] = [
@@ -67,11 +90,40 @@ export default function ClientWindow({
     text: request.requestText,
     status: "pending",
     request: "",
+    filePath: request.filePath,
   }));
   const visibleMessages = [...liveMessages, ...messages];
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadErrorId, setDownloadErrorId] = useState<string | null>(null);
+
+  async function downloadClientFile(message: ClientMessage) {
+    const path = message.filePath?.trim();
+    if (!path) return;
+    setDownloadingId(message.id);
+    setDownloadErrorId(null);
+    const fileName = requestFileName(path);
+    const url = requestFileUrl(path);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("download failed");
+      saveBlob(await response.blob(), fileName);
+    } catch {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setDownloadErrorId(message.id);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   function reject(id: string) {
     setMessages((current) =>
@@ -131,22 +183,40 @@ export default function ClientWindow({
                 <p className="mt-2 text-sm leading-7 text-ink">{message.text}</p>
               </div>
             </div>
-            {message.status === "pending" && (
+            {(message.status === "pending" || message.filePath) && (
               <div className="mt-4 flex flex-wrap gap-2">
-                <Btn
-                  variant="outline"
-                  className="!px-4 !py-2.5 !text-xs"
-                  onClick={() => reject(message.id)}
-                >
-                  رد کردن
-                </Btn>
-                <Btn
-                  className="!px-4 !py-2.5 !text-xs"
-                  onClick={() => openRequest(message.id)}
-                >
-                  درخواست دادن
-                </Btn>
+                {message.status === "pending" && (
+                  <>
+                    <Btn
+                      variant="outline"
+                      className="!px-4 !py-2.5 !text-xs"
+                      onClick={() => reject(message.id)}
+                    >
+                      رد کردن
+                    </Btn>
+                    <Btn
+                      className="!px-4 !py-2.5 !text-xs"
+                      onClick={() => openRequest(message.id)}
+                    >
+                      درخواست دادن
+                    </Btn>
+                  </>
+                )}
+                {message.filePath && (
+                  <Btn
+                    variant="outline"
+                    className="!px-4 !py-2.5 !text-xs"
+                    loading={downloadingId === message.id}
+                    onClick={() => downloadClientFile(message)}
+                  >
+                    <Download size={14} aria-hidden="true" />
+                    دانلود فایل موکل
+                  </Btn>
+                )}
               </div>
+            )}
+            {downloadErrorId === message.id && (
+              <p className="mt-2 text-xs text-red-700">دانلود مستقیم انجام نشد. فایل در صفحه جدید باز شد.</p>
             )}
             {message.status === "pending" && activeId === message.id && (
               <form onSubmit={send} className="mt-4">

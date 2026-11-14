@@ -19,7 +19,7 @@ export default function ChannelsPage() {
   const incomingRequests = useLawyerRequestSocket(isLawyer);
   const [selected, setSelected] = useState<string[]>(savedChannels);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(savedChannels.length === 3);
+  const [saved, setSaved] = useState(savedChannels.length === 5);
   const [domainsOpen, setDomainsOpen] = useState(true);
   const [roomName, setRoomName] = useState<string | null>(null);
 
@@ -31,16 +31,16 @@ export default function ChannelsPage() {
     setError("");
     setSelected((current) => {
       if (current.includes(title)) return current.filter((item) => item !== title);
-      if (current.length >= 3) return current;
+      if (current.length >= 5) return current;
       return [...current, title];
     });
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (selected.length !== 3) {
+    if (selected.length !== 5) {
       setSaved(false);
-      setError("سه حوزه را انتخاب کنید.");
+      setError("پنج حوزه را انتخاب کنید.");
       return;
     }
     savedChannels = [...selected];
@@ -49,12 +49,13 @@ export default function ChannelsPage() {
   }
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 grid-rows-3 gap-4 overflow-hidden lg:grid-rows-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.4fr)_minmax(0,4fr)]">
+    <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(0,1.8fr)] gap-4 overflow-hidden lg:grid-rows-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,5.4fr)]">
+      <div className="grid min-h-0 grid-rows-2 gap-4 overflow-hidden">
       <section className="min-h-0 overflow-y-auto rounded-2xl border border-line bg-white p-4 sm:p-5">
         <h1 className="text-xl font-bold text-ink">کانال‌ها</h1>
         <p className="mt-3 text-sm leading-7 text-muted">
-          سه حوزه دادگاه را انتخاب کنید.
-          <span className="mr-2 text-ink">{selected.length} از ۳</span>
+          پنج حوزه را انتخاب کنید.
+          <span className="mr-2 text-ink">{selected.length} از ۵</span>
         </p>
         <form onSubmit={submit} className="mt-6">
           <Btn
@@ -80,7 +81,7 @@ export default function ChannelsPage() {
                     key={title}
                     variant="outline"
                     aria-pressed={active}
-                    disabled={!active && selected.length >= 3}
+                    disabled={!active && selected.length >= 5}
                     className={`w-full justify-start ${active ? "!border-navy !bg-[#e8eef6] !text-navy" : ""}`}
                     onClick={() => toggle(title)}
                   >
@@ -101,7 +102,7 @@ export default function ChannelsPage() {
             </p>
           )}
           <div className="mt-6">
-            <Btn type="submit" disabled={selected.length !== 3}>
+            <Btn type="submit" disabled={selected.length !== 5}>
               ثبت کانال‌ها
             </Btn>
           </div>
@@ -158,6 +159,7 @@ export default function ChannelsPage() {
           )}
         </div>
       </section>
+      </div>
       <div className="h-full min-h-0">
         <ClientWindow roomName={roomName} incoming={incomingRequests} />
       </div>

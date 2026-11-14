@@ -24,7 +24,12 @@ function readRequest(payload: unknown): IncomingClientRequest | null {
   const domainId = Number(record.domainId ?? record.DomainId);
   const requestText = String(record.requestText ?? record.RequestText ?? "").trim();
   if (!id || !userId || !domainId || !requestText) return null;
-  const filePath = record.filePath ?? record.FilePath;
+  const files = record.files ?? record.Files;
+  const firstFile = Array.isArray(files) ? files.find((item) => item && typeof item === "object") : undefined;
+  const nestedPath = firstFile && typeof firstFile === "object"
+    ? (firstFile as Record<string, unknown>).filePath ?? (firstFile as Record<string, unknown>).FilePath
+    : undefined;
+  const filePath = nestedPath ?? record.filePath ?? record.FilePath;
   return {
     id,
     userId,

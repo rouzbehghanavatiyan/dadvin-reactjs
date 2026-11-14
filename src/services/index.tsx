@@ -126,12 +126,17 @@ export async function createReqClient(
   return response;
 }
 
+export type ClientRequestFile = {
+  attachmentId: number;
+  filePath: string;
+};
+
 export type ClientRequestItem = {
   id: number;
   userId: number;
   domainId: number;
   requestText: string;
-  filePath: string | null;
+  files: ClientRequestFile[];
   createDate: string;
 };
 
@@ -144,15 +149,30 @@ const readRequestItem = (value: unknown): ClientRequestItem | null => {
   const requestText = String(record.requestText ?? record.RequestText ?? "").trim();
   const createDate = String(record.createDate ?? record.CreateDate ?? "");
   if (!id || !domainId || !requestText || !createDate) return null;
-  const filePath = record.filePath ?? record.FilePath;
   return {
     id,
     userId: Number.isFinite(userId) ? userId : 0,
     domainId,
     requestText,
-    filePath: typeof filePath === "string" && filePath ? filePath : null,
+    files: readRequestFiles(record.files ?? record.Files, record.filePath ?? record.FilePath),
     createDate,
   };
+};
+
+const readRequestFiles = (value: unknown, legacyPath: unknown): ClientRequestFile[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const file = item as Record<string, unknown>;
+      const attachmentId = Number(file.attachmentId ?? file.AttachmentId);
+      const filePath = file.filePath ?? file.FilePath;
+      if (!attachmentId || typeof filePath !== "string" || !filePath) return [];
+      return [{ attachmentId, filePath }];
+    });
+  }
+  return typeof legacyPath === "string" && legacyPath
+    ? [{ attachmentId: 0, filePath: legacyPath }]
+    : [];
 };
 
 export async function getReqClient(
