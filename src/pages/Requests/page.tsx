@@ -5,12 +5,10 @@ import Btn from "../../UI/Btn";
 import TextArea from "../../UI/TextArea";
 import usePageTitle from "../../hooks/usePageTitle";
 import { useAppSelector } from "../../hooks/store/store";
-import { createReqClient, getReqClient, type ClientRequestItem } from "../../services";
+import { createReqClient, getDomains, getReqClient, type ClientRequestItem, type DomainItem } from "../../services";
 import { getErrorMessage } from "../../services/masterService";
 import { isClientAccount, profileRecord } from "../../utils/clientAccount";
 import { requestFileAccept, validateRequestFile } from "../../utils/requestFile";
-import { requestDomains } from "../../utils/requestDomains";
-
 const fileBaseUrl = (
   import.meta.env?.VITE_URL || "http://171.22.25.222:9090/"
 ).replace(/\/+$/, "");
@@ -35,19 +33,11 @@ function requestFileName(path: string) {
   return path.split("/").filter(Boolean).pop() || "فایل";
 }
 
-const categoryIcons = {
-  family: Users,
-  criminal: Gavel,
-  law: Scale,
-  registry: Landmark,
-  property: LandPlot,
-  insurance: Car,
-} as const;
+const categoryIcons = [Users, Gavel, Scale, Landmark, LandPlot, Car];
 
-const categories = requestDomains.map((item) => ({
-  ...item,
-  icon: categoryIcons[item.id],
-}));
+function categoryIcon(domainId: number) {
+  return categoryIcons[(domainId - 1) % categoryIcons.length] ?? Users;
+}
 
 export default function RequestsPage() {
   usePageTitle("درخواست‌ها");
@@ -55,7 +45,10 @@ export default function RequestsPage() {
   const profile = profileRecord(userProfile);
   const isClient = isClientAccount(profile);
   const [params, setParams] = useSearchParams();
-  const selected = categories.find((item) => item.id === params.get("category"));
+  const [domains, setDomains] = useState<DomainItem[]>([]);
+  const [domainsError, setDomainsError] = useState("");
+  const [loadingDomains, setLoadingDomains] = useState(true);
+  const selected = domains.find((item) => String(item.id) === params.get("category"));
   const [requestText, setRequestText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
@@ -66,7 +59,7 @@ export default function RequestsPage() {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
-  const domainId = selected?.domainId;
+  const domainId = selected?.id;
 
   const loadRequests = useCallback(async () => {
     if (!domainId) return;
@@ -82,6 +75,27 @@ export default function RequestsPage() {
       setLoadingRequests(false);
     }
   }, [domainId]);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingDomains(true);
+    setDomainsError("");
+    getDomains()
+      .then((items) => {
+        if (active) setDomains(items);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setDomains([]);
+        setDomainsError(getErrorMessage(err));
+      })
+      .finally(() => {
+        if (active) setLoadingDomains(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     setRequestText("");
@@ -100,6 +114,13 @@ export default function RequestsPage() {
   if (!isClient) return null;
 
   if (!selected) {
+    if (loadingDomains && params.get("category")) {
+      return (
+        <section className="mx-auto max-w-lg rounded-2xl border border-line bg-white p-6 sm:p-9">
+          <p className="text-sm text-muted">در حال دریافت دسته‌ها...</p>
+        </section>
+      );
+    }
     return (
       <section className="mx-auto max-w-lg rounded-2xl border border-line bg-white p-6 sm:p-9">
         <h1 className="text-xl font-bold text-ink">
@@ -109,23 +130,32 @@ export default function RequestsPage() {
           برای ادامه، یکی از دسته‌های زیر را انتخاب کنید.
         </p>
         <div className="mt-6 grid gap-3" role="group" aria-label="دسته‌های درخواست">
-          {categories.map(({ id, label, icon: Icon }) => (
-            <Btn
-              key={id}
-              variant="outline"
-              className="w-full justify-start py-4"
-              onClick={() => setParams({ category: id })}
-            >
-              <Icon size={18} className="text-navy" aria-hidden="true" />
-              {label}
-            </Btn>
-          ))}
+          {loadingDomains && (
+            <p className="text-sm text-muted">در حال دریافت دسته‌ها...</p>
+          )}
+          {domainsError && (
+            <p role="alert" className="text-xs text-red-700">{domainsError}</p>
+          )}
+          {domains.map(({ id, title }) => {
+            const Icon = categoryIcon(id);
+            return (
+              <Btn
+                key={id}
+                variant="outline"
+                className="w-full justify-start py-4"
+                onClick={() => setParams({ category: String(id) })}
+              >
+                <Icon size={18} className="text-navy" aria-hidden="true" />
+                {title}
+              </Btn>
+            );
+          })}
         </div>
       </section>
     );
   }
 
-  const SelectedIcon = selected.icon;
+  const SelectedIcon = categoryIcon(selected.id);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -146,7 +176,7 @@ export default function RequestsPage() {
     setError("");
     try {
       await createReqClient({
-        domainId: selected.domainId,
+        domainId: selected.id,
         requestText: value,
         file,
       });
@@ -166,7 +196,7 @@ export default function RequestsPage() {
       <p className="text-xs text-muted">دسته انتخاب‌شده</p>
       <h1 className="mt-2 flex items-center gap-2 text-xl font-bold text-ink">
         <SelectedIcon size={22} className="text-navy" aria-hidden="true" />
-        {selected.label}
+        {selected.title}
       </h1>
       {sentText ? (
         <div className="mt-6">

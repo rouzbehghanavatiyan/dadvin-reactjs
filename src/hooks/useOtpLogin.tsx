@@ -13,9 +13,19 @@ import {
   type UserProfile,
 } from "../types/domain";
 
+function readTestOtp(result: unknown) {
+  if (!result || typeof result !== "object") return null;
+  const envelope = result as Record<string, unknown>;
+  const inner = envelope.result ?? envelope.Result;
+  if (!inner || typeof inner !== "object") return null;
+  const code = (inner as Record<string, unknown>).code ?? (inner as Record<string, unknown>).Code;
+  return typeof code === "string" && /^\d{4}$/.test(code) ? code : null;
+}
+
 export default function useOtpLogin() {
   const [mobile, setMobile] = useState<string | null>(null);
   const [draftMobile, setDraftMobile] = useState("");
+  const [testCode, setTestCode] = useState<string | null>(null);
   const cooldown = useOtpCooldown();
   const [feedback, setFeedback] = useState<FlowFeedback | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,6 +81,7 @@ export default function useOtpLogin() {
         throw failure;
       }
       if (signal.aborted) return;
+      setTestCode(readTestOtp(result));
       setDraftMobile(payload.mobile);
       setMobile(payload.mobile);
       cooldown.start();
@@ -115,6 +126,7 @@ export default function useOtpLogin() {
   function editMobile() {
     if (activeRequest.current) return;
     setMobile(null);
+    setTestCode(null);
     setFeedback(null);
   }
 
@@ -125,6 +137,7 @@ export default function useOtpLogin() {
 
   return {
     mobile,
+    testCode,
     draftMobile,
     feedback,
     busy,

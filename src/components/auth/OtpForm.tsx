@@ -9,6 +9,7 @@ import type { FlowFeedback } from "../../types/domain";
 
 type OtpFormProps = {
   phoneNumber?: string | null;
+  testCode?: string | null;
   verifyCode: (values: { code: string }) => void | Promise<unknown>;
   editDetails: () => void;
   busy: boolean;
@@ -21,6 +22,7 @@ type OtpFormProps = {
 
 export default function OtpForm({
   phoneNumber,
+  testCode,
   verifyCode,
   editDetails,
   busy,
@@ -42,6 +44,11 @@ export default function OtpForm({
         کد پیامک‌شده به{" "}
         <bdi className="font-medium text-ink">{phoneNumber}</bdi> را وارد کنید.
       </p>
+      {testCode && (
+        <p className="rounded-xl border border-line bg-slate-50 px-3 py-2 text-sm text-ink">
+          کد تایید تستی: <bdi className="font-bold">{testCode}</bdi>
+        </p>
+      )}
       <form
         noValidate
         onSubmit={handleSubmit(verifyCode)}

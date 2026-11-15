@@ -134,6 +134,7 @@ export type ClientRequestFile = {
 export type ClientRequestItem = {
   id: number;
   userId: number;
+  clientName: string;
   domainId: number;
   requestText: string;
   files: ClientRequestFile[];
@@ -146,12 +147,14 @@ const readRequestItem = (value: unknown): ClientRequestItem | null => {
   const id = Number(record.id ?? record.Id);
   const userId = Number(record.userId ?? record.UserId);
   const domainId = Number(record.domainId ?? record.DomainId);
+  const clientName = record.clientName ?? record.ClientName;
   const requestText = String(record.requestText ?? record.RequestText ?? "").trim();
   const createDate = String(record.createDate ?? record.CreateDate ?? "");
   if (!id || !domainId || !requestText || !createDate) return null;
   return {
     id,
     userId: Number.isFinite(userId) ? userId : 0,
+    clientName: typeof clientName === "string" ? clientName.trim() : "",
     domainId,
     requestText,
     files: readRequestFiles(record.files ?? record.Files, record.filePath ?? record.FilePath),
@@ -174,6 +177,274 @@ const readRequestFiles = (value: unknown, legacyPath: unknown): ClientRequestFil
     ? [{ attachmentId: 0, filePath: legacyPath }]
     : [];
 };
+
+export type DomainItem = {
+  id: number;
+  title: string;
+};
+
+const readDomainItem = (value: unknown): DomainItem | null => {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const id = Number(record.id ?? record.Id);
+  const title = record.title ?? record.Title;
+  if (!id || typeof title !== "string" || !title.trim()) return null;
+  return { id, title };
+};
+
+export async function getDomains(
+  config?: AxiosRequestConfig,
+): Promise<DomainItem[]> {
+  const response = await getAuth<ApiEnvelope>(endpoints.getDomains, config);
+  const data = readEnvelope(response);
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : [];
+  return list.flatMap((item) => {
+    const domain = readDomainItem(item);
+    return domain ? [domain] : [];
+  });
+}
+
+export type DomainRoomItem = {
+  id: number;
+  domainId: number;
+  domainTitle: string;
+  title: string;
+  entranceRoom: number;
+  full: boolean;
+};
+
+const readList = (value: unknown): unknown[] => {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return [];
+  const record = value as Record<string, unknown>;
+  const nested = record.data ?? record.Data ?? record.result ?? record.Result ?? record.$values;
+  return Array.isArray(nested) ? nested : [];
+};
+
+const readDomainRoom = (value: unknown): DomainRoomItem | null => {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const id = Number(record.id ?? record.Id);
+  const domainId = Number(record.domainId ?? record.DomainId);
+  const entranceRoom = Number(record.entranceRoom ?? record.EntranceRoom);
+  const title = record.title ?? record.Title;
+  const domainTitle = record.domainTitle ?? record.DomainTitle;
+  const fullValue = record.full ?? record.Full;
+  if (!id || !domainId || typeof title !== "string" || !title.trim()) return null;
+  const full = typeof fullValue === "boolean" ? fullValue : entranceRoom === 10;
+  return {
+    id,
+    domainId,
+    domainTitle: typeof domainTitle === "string" ? domainTitle : "",
+    title,
+    entranceRoom: Number.isFinite(entranceRoom) ? entranceRoom : 0,
+    full,
+  };
+};
+
+export async function getDomainRooms(
+  config?: AxiosRequestConfig,
+): Promise<DomainRoomItem[]> {
+  const response = await getAuth<ApiEnvelope>(endpoints.getDomainRooms, config);
+  const data = readEnvelope(response);
+  const list = readList(data).length > 0 ? readList(data) : readList(response);
+  return list.flatMap((item) => {
+    const room = readDomainRoom(item);
+    return room ? [room] : [];
+  });
+}
+
+export async function getRequestsByDomain(
+  domainId: number,
+  id: number,
+  config?: AxiosRequestConfig,
+): Promise<ClientRequestItem[]> {
+  const response = await getAuth<ApiEnvelope>(endpoints.getRequestsByDomain, {
+    ...config,
+    params: { domainId, id, ...config?.params },
+  });
+  const data = readEnvelope(response);
+  const list = readList(data).length > 0 ? readList(data) : readList(response);
+  return list.flatMap((item) => {
+    const request = readRequestItem(item);
+    return request ? [request] : [];
+  });
+}
+
+export type ClientReceiptResponse = {
+  id: number;
+  requestId: number;
+  userId: number;
+  requestText: string;
+  acceptDate: string;
+};
+
+export type ClientReceiptMaster = {
+  id: number;
+  userId: number;
+  requestText: string;
+  domainId: number;
+  domainTitle: string;
+  items: ClientReceiptResponse[];
+};
+
+const readReceiptResponse = (value: unknown): ClientReceiptResponse | null => {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const id = Number(record.id ?? record.Id);
+  const requestId = Number(record.requestId ?? record.RequestId);
+  const userId = Number(record.userId ?? record.UserId);
+  const requestText = String(record.requestText ?? record.RequestText ?? "").trim();
+  const acceptDate = String(record.acceptDate ?? record.AcceptDate ?? "");
+  if (!id || !requestId) return null;
+  return {
+    id,
+    requestId,
+    userId: Number.isFinite(userId) ? userId : 0,
+    requestText,
+    acceptDate,
+  };
+};
+
+export async function registerClientAccept(
+  values: { requestId: number; requestText: string; file?: File | null },
+  config?: AxiosRequestConfig,
+) {
+  const formData = new FormData();
+  formData.append("requestId", String(values.requestId));
+  formData.append("requestText", values.requestText);
+  if (values.file) formData.append("file", values.file);
+  const response = await postMultipart<ApiEnvelope>(
+    endpoints.registerClientAccept,
+    formData,
+    config,
+  );
+  return readEnvelope(response);
+}
+
+const readReceiptMaster = (value: unknown): ClientReceiptMaster | null => {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const id = Number(record.id ?? record.Id);
+  const userId = Number(record.userId ?? record.UserId);
+  const domainId = Number(record.domainId ?? record.DomainId);
+  const requestText = String(record.requestText ?? record.RequestText ?? "").trim();
+  const domainTitle = record.domainTitle ?? record.DomainTitle;
+  const items = readList(record.items ?? record.Items).flatMap((item) => {
+    const response = readReceiptResponse(item);
+    return response ? [response] : [];
+  });
+  if (!id || !requestText) return null;
+  return {
+    id,
+    userId: Number.isFinite(userId) ? userId : 0,
+    requestText,
+    domainId: Number.isFinite(domainId) ? domainId : 0,
+    domainTitle: typeof domainTitle === "string" ? domainTitle : "",
+    items,
+  };
+};
+
+export type ChatContact = {
+  userId: number;
+  name: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
+};
+
+export type ChatMessage = {
+  id: number;
+  senderId: number;
+  receiveId: number;
+  text: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
+const readChatContact = (value: unknown): ChatContact | null => {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const userId = Number(record.userId ?? record.UserId);
+  const name = String(record.name ?? record.Name ?? "").trim();
+  const lastMessage = String(record.lastMessage ?? record.LastMessage ?? "").trim();
+  const lastMessageAt = String(record.lastMessageAt ?? record.LastMessageAt ?? "");
+  const unreadCount = Number(record.unreadCount ?? record.UnreadCount);
+  if (!userId) return null;
+  return {
+    userId,
+    name: name || `کاربر ${userId}`,
+    lastMessage,
+    lastMessageAt,
+    unreadCount: Number.isFinite(unreadCount) ? unreadCount : 0,
+  };
+};
+
+const readChatMessage = (value: unknown): ChatMessage | null => {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const id = Number(record.id ?? record.Id);
+  const senderId = Number(record.senderId ?? record.SenderId);
+  const receiveId = Number(record.receiveId ?? record.ReceiveId);
+  const text = String(record.text ?? record.Text ?? "").trim();
+  const createdAt = String(record.createdAt ?? record.CreatedAt ?? "");
+  const isRead = Boolean(record.isRead ?? record.IsRead);
+  if (!id || !senderId || !text) return null;
+  return { id, senderId, receiveId, text, isRead, createdAt };
+};
+
+export async function getChats(config?: AxiosRequestConfig): Promise<ChatContact[]> {
+  const response = await getAuth<ApiEnvelope>(endpoints.getChats, config);
+  const data = readEnvelope(response);
+  const list = readList(data).length > 0 ? readList(data) : readList(response);
+  return list.flatMap((item) => {
+    const contact = readChatContact(item);
+    return contact ? [contact] : [];
+  });
+}
+
+export async function getChatMessages(
+  userId: number,
+  config?: AxiosRequestConfig,
+): Promise<ChatMessage[]> {
+  const response = await getAuth<ApiEnvelope>(endpoints.getChatMessages, {
+    ...config,
+    params: { userId, ...config?.params },
+  });
+  const data = readEnvelope(response);
+  const list = readList(data).length > 0 ? readList(data) : readList(response);
+  return list.flatMap((item) => {
+    const message = readChatMessage(item);
+    return message ? [message] : [];
+  });
+}
+
+export async function sendChat(
+  values: { receiveId: number; text: string },
+  config?: AxiosRequestConfig,
+): Promise<ChatMessage> {
+  const response = await postAuth<ApiEnvelope>(endpoints.sendChat, values, config);
+  const data = readEnvelope(response);
+  const message = readChatMessage(data);
+  if (!message) throw new Error("پیام ارسال شد ولی پاسخ سرور خوانده نشد.");
+  return message;
+}
+
+export async function getClientReceipts(
+  config?: AxiosRequestConfig,
+): Promise<ClientReceiptMaster[]> {
+  const response = await getAuth<ApiEnvelope>(endpoints.getClientReceipts, config);
+  const data = readEnvelope(response);
+  const list = readList(data).length > 0 ? readList(data) : readList(response);
+  return list.flatMap((item) => {
+    const receipt = readReceiptMaster(item);
+    return receipt ? [receipt] : [];
+  });
+}
 
 export async function getReqClient(
   config?: AxiosRequestConfig,

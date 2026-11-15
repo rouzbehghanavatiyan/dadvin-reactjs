@@ -97,7 +97,7 @@ export default function ProfileLayout() {
             {verifiedMobile ? (
               <>
                 {isClient && <NotificationBell />}
-                {/* {isClient && (
+                {(isClient || isLawyer) && (
                   <Link
                     to="/chat"
                     className={`flex items-center gap-1.5 text-navy transition-colors hover:text-primary ${isChatActive ? "font-bold underline" : ""
@@ -106,7 +106,7 @@ export default function ProfileLayout() {
                     <MessageCircle size={16} />
                     <span>گفتگو</span>
                   </Link>
-                )} */}
+                )}
                 {isLawyer && (
                   <Link
                     to="/channels"

@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Download, UserRound } from "lucide-react";
 import Btn from "../../UI/Btn";
 import TextArea from "../../UI/TextArea";
+import { getRequestsByDomain, registerClientAccept, type ClientRequestItem } from "../../services";
+import { getErrorMessage } from "../../services/masterService";
 import type { IncomingClientRequest } from "../../services/requestSocket";
 import { domainLabel } from "../../utils/requestDomains";
 
@@ -31,73 +33,100 @@ function saveBlob(blob: Blob, fileName: string) {
 
 type ClientMessage = {
   id: string;
+  userId: number;
   name: string;
   text: string;
-  status: "pending" | "rejected" | "sent";
+  status: "pending" | "sent";
   request: string;
   filePath?: string | null;
 };
 
-const initialMessages: ClientMessage[] = [
-  {
-    id: "1",
-    name: "سارا احمدی",
-    text: "برای مهریه و نفقه نیاز به پیگیری دارم.",
+function requestMessage(item: ClientRequestItem): ClientMessage {
+  const name = item.clientName || `موکل ${item.userId}`;
+  return {
+    id: String(item.id),
+    userId: item.userId,
+    name: `${name} · ${domainLabel(item.domainId)}`,
+    text: item.requestText,
     status: "pending",
     request: "",
-  },
-  {
-    id: "2",
-    name: "رضا مرادی",
-    text: "کارفرما حقوق سه ماه را پرداخت نکرده است.",
-    status: "pending",
-    request: "",
-  },
-  {
-    id: "3",
-    name: "مریم حسینی",
-    text: "بعد از تصادف، بیمه خسارت را پرداخت نمی‌کند.",
-    status: "pending",
-    request: "",
-  },
-  {
-    id: "4",
-    name: "علی کریمی",
-    text: "قرارداد مشارکت را پیش از امضا بررسی کنید.",
-    status: "pending",
-    request: "",
-  },
-  {
-    id: "5",
-    name: "نازنین رضایی",
-    text: "برای شکایت سرقت از مغازه‌ام وکیل می‌خواهم.",
-    status: "pending",
-    request: "",
-  },
-];
+    filePath: item.files[0]?.filePath ?? null,
+  };
+}
 
-export default function ClientWindow({
-  roomName,
-  incoming = [],
-}: {
-  roomName: string | null;
-  incoming?: IncomingClientRequest[];
-}) {
-  const [messages, setMessages] = useState(initialMessages);
-  const liveMessages: ClientMessage[] = incoming.map((request) => ({
-    id: `live-${request.id}`,
+function liveMessage(request: IncomingClientRequest): ClientMessage {
+  return {
+    id: String(request.id),
+    userId: request.userId,
     name: `موکل ${request.userId} · ${domainLabel(request.domainId)}`,
     text: request.requestText,
     status: "pending",
     request: "",
     filePath: request.filePath,
-  }));
-  const visibleMessages = [...liveMessages, ...messages];
+  };
+}
+
+export default function ClientWindow({
+  roomName,
+  roomId = null,
+  domainId = null,
+  incoming = [],
+}: {
+  roomName: string | null;
+  roomId?: number | null;
+  domainId?: number | null;
+  incoming?: IncomingClientRequest[];
+}) {
+  const [messages, setMessages] = useState<ClientMessage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadErrorId, setDownloadErrorId] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [replyFile, setReplyFile] = useState<File | null>(null);
+  const liveMessages = incoming
+    .filter((request) => domainId != null && request.domainId === domainId)
+    .filter((request) => !messages.some((message) => message.id === String(request.id)))
+    .map(liveMessage);
+  const visibleMessages = [...liveMessages, ...messages];
+
+  useEffect(() => {
+    setActiveId(null);
+    setDraft("");
+    setReplyFile(null);
+    setError("");
+
+    if (!domainId || !roomId) {
+      setMessages([]);
+      setLoadError("");
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
+    setLoadError("");
+    setMessages([]);
+    getRequestsByDomain(domainId, roomId)
+      .then((items) => {
+        if (active) setMessages(items.map(requestMessage));
+      })
+      .catch((err) => {
+        if (!active) return;
+        setMessages([]);
+        setLoadError(getErrorMessage(err));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [domainId, roomId]);
 
   async function downloadClientFile(message: ClientMessage) {
     const path = message.filePath?.trim();
@@ -125,42 +154,40 @@ export default function ClientWindow({
     }
   }
 
-  function reject(id: string) {
-    setMessages((current) =>
-      current.map((message) =>
-        message.id === id ? { ...message, status: "rejected" } : message,
-      ),
-    );
-    if (activeId === id) {
-      setActiveId(null);
-      setDraft("");
-      setError("");
-    }
-  }
-
   function openRequest(id: string) {
     setActiveId(id);
     setDraft("");
+    setReplyFile(null);
     setError("");
   }
 
-  function send(event: FormEvent<HTMLFormElement>) {
+  async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const text = draft.trim();
-    if (!activeId || !text) {
+    const requestId = Number(activeId);
+    if (!activeId || !requestId || !text) {
       setError("درخواست را بنویسید.");
       return;
     }
-    setMessages((current) =>
-      current.map((message) =>
-        message.id === activeId
-          ? { ...message, status: "sent", request: text }
-          : message,
-      ),
-    );
-    setActiveId(null);
-    setDraft("");
+    setSending(true);
     setError("");
+    try {
+      await registerClientAccept({ requestId, requestText: text, file: replyFile });
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === activeId
+            ? { ...message, status: "sent", request: text, text }
+            : message,
+        ),
+      );
+      setActiveId(null);
+      setDraft("");
+      setReplyFile(null);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -169,6 +196,18 @@ export default function ClientWindow({
         <h2 className="text-lg font-bold text-ink">{roomName ?? "پیام موکل‌ها"}</h2>
       </header>
       <ul className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
+        {(!domainId || !roomId) && (
+          <li className="text-sm leading-7 text-muted">برای دیدن درخواست موکل‌ها یک اتاق را انتخاب کنید.</li>
+        )}
+        {domainId && roomId && loading && (
+          <li className="text-sm text-muted">در حال دریافت درخواست‌ها...</li>
+        )}
+        {loadError && (
+          <li role="alert" className="text-xs text-red-700">{loadError}</li>
+        )}
+        {domainId && roomId && !loading && !loadError && visibleMessages.length === 0 && (
+          <li className="text-sm leading-7 text-muted">برای این حوزه درخواستی ثبت نشده است.</li>
+        )}
         {visibleMessages.map((message) => (
           <li key={message.id} className="rounded-2xl border border-line bg-[#f8fafc] p-4">
             <div className="flex items-start gap-3">
@@ -186,21 +225,12 @@ export default function ClientWindow({
             {(message.status === "pending" || message.filePath) && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {message.status === "pending" && (
-                  <>
-                    <Btn
-                      variant="outline"
-                      className="!px-4 !py-2.5 !text-xs"
-                      onClick={() => reject(message.id)}
-                    >
-                      رد کردن
-                    </Btn>
-                    <Btn
-                      className="!px-4 !py-2.5 !text-xs"
-                      onClick={() => openRequest(message.id)}
-                    >
-                      درخواست دادن
-                    </Btn>
-                  </>
+                  <Btn
+                    className="!px-4 !py-2.5 !text-xs"
+                    onClick={() => openRequest(message.id)}
+                  >
+                    درخواست دادن
+                  </Btn>
                 )}
                 {message.filePath && (
                   <Btn
@@ -231,13 +261,18 @@ export default function ClientWindow({
                     if (error) setError("");
                   }}
                 />
+                <label className="mt-3 block text-xs text-muted">
+                  فایل پیوست
+                  <input
+                    type="file"
+                    className="mt-2 block w-full text-sm text-ink"
+                    onChange={(event) => setReplyFile(event.target.files?.[0] ?? null)}
+                  />
+                </label>
                 <div className="mt-3">
-                  <Btn type="submit">ارسال درخواست</Btn>
+                  <Btn type="submit" loading={sending}>ارسال درخواست</Btn>
                 </div>
               </form>
-            )}
-            {message.status === "rejected" && (
-              <p className="mt-4 text-xs text-red-700">رد شد</p>
             )}
             {message.status === "sent" && (
               <div className="mt-4">

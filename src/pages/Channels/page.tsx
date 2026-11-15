@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ChevronDown } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import Btn from "../../UI/Btn";
@@ -6,8 +6,24 @@ import usePageTitle from "../../hooks/usePageTitle";
 import { useAppSelector } from "../../hooks/store/store";
 import { isLawyerAccount, profileRecord } from "../../utils/clientAccount";
 import { useLawyerRequestSocket } from "../../hooks/useLawyerRequestSocket";
+import { getDomainRooms, getDomains, type DomainItem, type DomainRoomItem } from "../../services";
+import { getErrorMessage } from "../../services/masterService";
 import ClientWindow from "./ClientWindow";
-import { courtChannels, roomsFor } from "./rooms";
+
+const roomCapacity = 10;
+
+function persianNumber(value: number) {
+  return String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
+}
+
+function roomIsFull(room: DomainRoomItem) {
+  return room.full || room.entranceRoom === roomCapacity;
+}
+
+function roomOccupancy(room: DomainRoomItem) {
+  if (roomIsFull(room)) return "ظرفیت تکمیل است";
+  return `${persianNumber(room.entranceRoom)} از ${persianNumber(roomCapacity)}`;
+}
 
 let savedChannels: string[] = [];
 
@@ -22,9 +38,65 @@ export default function ChannelsPage() {
   const [saved, setSaved] = useState(savedChannels.length === 5);
   const [domainsOpen, setDomainsOpen] = useState(true);
   const [roomName, setRoomName] = useState<string | null>(null);
+  const [roomDomainId, setRoomDomainId] = useState<number | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+  const [domains, setDomains] = useState<DomainItem[]>([]);
+  const [domainsError, setDomainsError] = useState("");
+  const [rooms, setRooms] = useState<DomainRoomItem[]>([]);
+  const [roomsError, setRoomsError] = useState("");
+  const [loadingRooms, setLoadingRooms] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    getDomains()
+      .then((items) => {
+        if (active) setDomains(items);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setDomains([]);
+        setDomainsError(getErrorMessage(err));
+      });
+    setLoadingRooms(true);
+    getDomainRooms()
+      .then((items) => {
+        if (active) setRooms(items);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setRooms([]);
+        setRoomsError(getErrorMessage(err));
+      })
+      .finally(() => {
+        if (active) setLoadingRooms(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const roomGroups = (() => {
+    const groups = new Map<string, DomainRoomItem[]>();
+    rooms.forEach((room) => {
+      const key = room.domainTitle || domains.find((item) => item.id === room.domainId)?.title || `حوزه ${room.domainId}`;
+      const current = groups.get(key) ?? [];
+      current.push(room);
+      groups.set(key, current);
+    });
+    const chosen = saved ? selected : [];
+    const entries = [...groups.entries()].filter(([title]) => chosen.length === 0 || chosen.includes(title));
+    return entries.length > 0 ? entries : [...groups.entries()];
+  })();
 
   if (profile?.id != null && !isLawyer) return <Navigate to="/panel" replace />;
   if (!isLawyer) return null;
+
+  function openRoom(room: DomainRoomItem) {
+    if (roomIsFull(room)) return;
+    setRoomName(room.title);
+    setRoomDomainId(room.domainId);
+    setSelectedRoomId(room.id);
+  }
 
   function toggle(title: string) {
     setSaved(false);
@@ -74,7 +146,14 @@ export default function ChannelsPage() {
           </Btn>
           {domainsOpen && (
             <div id="court-domains" className="mt-3 grid grid-cols-1 gap-3" role="group" aria-label="حوزه‌های دادگاه">
-              {courtChannels.map((title) => {
+              {domainsError && (
+                <p role="alert" className="text-xs text-red-700">{domainsError}</p>
+              )}
+              {domains.length === 0 && !domainsError && (
+                <p className="text-sm text-muted">در حال دریافت حوزه‌ها...</p>
+              )}
+              {domains.map((domain) => {
+                const title = domain.title;
                 const active = selected.includes(title);
                 return (
                   <Btn
@@ -113,45 +192,57 @@ export default function ChannelsPage() {
           <h2 className="text-base font-bold text-ink">اتاق‌ها</h2>
         </header>
         <div className="flex-1 overflow-y-auto p-4">
-          {!saved && (
-            <p className="text-sm leading-7 text-muted">پس از ثبت کانال‌ها، اتاق‌ها اینجا نمایش داده می‌شوند.</p>
+          {loadingRooms && (
+            <p className="text-sm text-muted">در حال دریافت اتاق‌ها...</p>
           )}
-          {saved && (
+          {roomsError && (
+            <p role="alert" className="text-xs text-red-700">{roomsError}</p>
+          )}
+          {!loadingRooms && !roomsError && roomGroups.length === 0 && (
+            <p className="text-sm leading-7 text-muted">اتاقی برای نمایش نیست.</p>
+          )}
+          {!loadingRooms && !roomsError && roomGroups.length > 0 && (
             <div className="space-y-6">
-              {selected.map((channel) => (
+              {roomGroups.map(([channel, channelRooms]) => (
                 <section key={channel} aria-label={`اتاق‌های ${channel}`}>
                   <h3 className="text-sm font-medium text-ink">{channel}</h3>
                   <ul className="mt-2 grid grid-cols-1 gap-1.5">
-                    {roomsFor(channel).map((room) => (
-                      <li
-                        key={room.id}
-                        aria-disabled={room.full || undefined}
-                        className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${room.full
-                            ? "cursor-not-allowed border-[#f3d0d0] bg-[#f4f7fb] text-muted"
-                            : "border-line bg-[#f8fafc]"
-                          }`}
-                      >
-                        <p className={`min-w-0 flex-1 truncate text-sm ${room.full ? "text-muted" : "text-ink"}`}>
-                          {room.id}
-                        </p>
-                        {!room.full && (
-                          <Btn
-                            className="!shrink-0 !bg-emerald-600 !px-2.5 !py-1 !text-[11px] !shadow-none hover:!bg-emerald-700"
-                            onClick={() => setRoomName(room.title)}
-                          >
-                            ورود
-                          </Btn>
-                        )}
-                        <p
-                          className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] leading-4 ${room.full
-                              ? "bg-[#fde8e8] text-[#9b2c2c]"
-                              : "bg-[#edf2f7] text-navy"
+                    {channelRooms.map((room) => {
+                      const full = roomIsFull(room);
+                      const active = room.id === selectedRoomId;
+                      return (
+                        <li
+                          key={room.id}
+                          aria-disabled={full || undefined}
+                          className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${active
+                              ? "border-navy bg-[#e8eef6]"
+                              : full
+                                ? "cursor-not-allowed border-[#f3d0d0] bg-[#f4f7fb] text-muted"
+                                : "border-line bg-[#f8fafc]"
                             }`}
                         >
-                          {room.occupancy}
-                        </p>
-                      </li>
-                    ))}
+                          <p className={`min-w-0 flex-1 truncate text-sm ${full ? "text-muted" : "text-ink"}`}>
+                            {room.title}
+                          </p>
+                          {!full && (
+                            <Btn
+                              className="!shrink-0 !bg-emerald-600 !px-2.5 !py-1 !text-[11px] !shadow-none hover:!bg-emerald-700"
+                              onClick={() => openRoom(room)}
+                            >
+                              ورود
+                            </Btn>
+                          )}
+                          <p
+                            className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] leading-4 ${full
+                                ? "bg-[#fde8e8] text-[#9b2c2c]"
+                                : "bg-[#edf2f7] text-navy"
+                              }`}
+                          >
+                            {roomOccupancy(room)}
+                          </p>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </section>
               ))}
@@ -161,7 +252,12 @@ export default function ChannelsPage() {
       </section>
       </div>
       <div className="h-full min-h-0">
-        <ClientWindow roomName={roomName} incoming={incomingRequests} />
+        <ClientWindow
+          roomName={roomName}
+          roomId={selectedRoomId}
+          domainId={roomDomainId}
+          incoming={incomingRequests}
+        />
       </div>
     </div>
   );

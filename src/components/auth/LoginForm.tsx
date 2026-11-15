@@ -17,6 +17,7 @@ export default function LoginForm() {
         resendCode={flow.resendCode}
         secondsLeft={flow.secondsLeft}
         phoneNumber={flow.mobile}
+        testCode={flow.testCode}
         verifyCode={flow.verifyCode}
         editDetails={flow.editMobile}
         busy={flow.busy}
